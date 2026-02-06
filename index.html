@@ -269,8 +269,8 @@
     <div id="tabApelaciones" class="hidden flex-1 overflow-y-auto p-6 bg-slate-100">
         <div class="max-w-5xl mx-auto"><h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center"><i class="fas fa-gavel text-pink-500 mr-2"></i> Gestión de Apelaciones</h2><div id="contApelaciones" class="grid grid-cols-1 gap-4"><p class="text-center text-slate-400 py-10 italic">Cargando...</p></div></div>
     </div>
-
-    <script>
+<script>
+        // ================= CONFIGURACIÓN =================
         const API_URL = "https://script.google.com/macros/s/AKfycbzGtnjzJeHSePkZ_0k_bt1hZcrYVjxIcV4_dekezLO815n7YPUlmCbt5QmvmwYcqyYheA/exec"; 
 
         const baseEjecutivos = [
@@ -302,6 +302,25 @@
             {nombre:"Marco Lara Vera", codigo:"S0226", sup:"Aracely Torres", serv:"HLF"}
         ];
 
+        // DICCIONARIO MAESTRO DE INDICADORES (Traducción Excel -> Nombre Pauta)
+        const INDICADORES_MAP = {
+            "SEG_VALIDACION": "Validación Identidad",
+            "SEG_CONFIDENCIALIDAD": "Confidencialidad",
+            "COND_NORMAS": "Normas de Conducta",
+            "OP_ABANDONO": "Abandono",
+            "SIST_REGISTRO": "Registro",
+            "PROT_SCRIPT": "Script Inicio/Cierre",
+            "PROT_CORTESIA": "Cortesía y Trato",
+            "GEST_SONDEO": "Sondeo",
+            "GEST_INFORMACION": "Entrega Información",
+            "GEST_TIEMPOS": "Manejo Tiempos",
+            "GEST_ASEGURAMIENTO": "Aseguramiento",
+            "HAB_PERSONALIZACION": "Personalización",
+            "HAB_LENGUAJE": "Lenguaje",
+            "HAB_EMPATIA": "Empatía",
+            "SIST_TIPIFICACION": "Tipificación"
+        };
+
         const pautaItems = [
             {cat:"PEC", label:"Validación Identidad", name:"item_validacion", tip:"Solicita RUT y Nombre completo."},
             {cat:"PEC", label:"Confidencialidad", name:"item_confidencialidad", tip:"Resguardo de datos sensibles."},
@@ -320,15 +339,19 @@
             {cat:"PENC", label:"Tipificación (15%)", name:"item_tipificacion", w:15, tip:"Motivo correcto en CRM."}
         ];
 
-        const PAUTA_DEFS = {}; pautaItems.forEach(i => PAUTA_DEFS[i.label] = i.tip);
-        let RAW_DATA=[], FILTERED_DATA=[], sortCol='FECHA', sortAsc=false, sortExecCol='TOTAL', sortExecAsc=false, timerInterval, seconds=0;
+        let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0;
 
         window.onload = () => { 
             renderFormTable(); 
             initFormLogic(); 
             document.getElementById('auditTools').classList.remove('hidden'); 
             document.getElementById('audioDock').classList.remove('hidden'); 
-            loadData(); 
+            
+            // ACTUALIZACIÓN FOOTER CON MAILTO
+            const footer = document.querySelector('footer p');
+            if(footer) footer.innerHTML = `Desarrollado por <a href="mailto:marco.lara.vera@gmail.com" class="text-indigo-400 hover:text-indigo-300 hover:underline transition">Marco Lara</a> • Iniciativa de innovación 2026`;
+            
+            cambiarTab('tabDashboard'); 
         };
 
         function initFormLogic() {
@@ -340,103 +363,30 @@
             });
         }
 
-        // --- HERRAMIENTAS V12.0 ---
-        function toggleDock(dockId, btnId) {
-            const d=document.getElementById(dockId), b=document.getElementById(btnId);
-            if(d.classList.contains('hidden')){d.classList.remove('hidden');b.classList.add('hidden');}else{d.classList.add('hidden');b.classList.remove('hidden');}
-        }
-        function loadAudioFromForm() {
-            const url = document.getElementById('inputAudioUrl').value;
-            if(!url) return Swal.fire("Atención", "Pega un link primero", "warning");
-            const player = document.getElementById('mainAudioPlayer');
-            const status = document.getElementById('audioStatus');
-            player.src = url;
-            player.play().then(() => {
-                status.innerText = "Reproduciendo..."; status.className = "text-[9px] text-emerald-500 font-bold uppercase mb-2";
-            }).catch(e => {
-                status.innerText = "Error al cargar"; status.className = "text-[9px] text-red-500 font-bold uppercase mb-2";
-                console.error(e);
-            });
-        }
-        function setSpeed(rate) {
-            const player = document.getElementById('mainAudioPlayer');
-            player.playbackRate = rate;
-            document.querySelectorAll('.speed-btn').forEach(b => {
-                if(b.innerText.includes(rate)) { b.classList.remove('bg-slate-200','text-slate-600'); b.classList.add('bg-indigo-600','text-white'); } 
-                else { b.classList.add('bg-slate-200','text-slate-600'); b.classList.remove('bg-indigo-600','text-white'); }
-            });
-        }
+        // --- FUNCIONES CORE ---
+        function toggleDock(dockId, btnId) { const d=document.getElementById(dockId), b=document.getElementById(btnId); if(d.classList.contains('hidden')){d.classList.remove('hidden');b.classList.add('hidden');}else{d.classList.add('hidden');b.classList.remove('hidden');} }
+        function loadAudioFromForm() { const url = document.getElementById('inputAudioUrl').value; if(!url) return Swal.fire("Atención", "Pega un link primero", "warning"); const p=document.getElementById('mainAudioPlayer'); p.src=url; p.play(); }
+        function setSpeed(rate) { document.getElementById('mainAudioPlayer').playbackRate = rate; }
         function startTimer() { if(!timerInterval) timerInterval=setInterval(()=>{seconds++; let d=new Date(seconds*1000).toISOString().substr(14,5); document.getElementById('timerDisplay').innerText=d;},1000); }
         function pauseTimer() { clearInterval(timerInterval); timerInterval=null; }
         function resetTimer() { pauseTimer(); seconds=0; document.getElementById('timerDisplay').innerText="00:00"; }
         function countUp(id) { const e=document.getElementById(id); e.innerText=parseInt(e.innerText)+1; }
         function countReset(id) { document.getElementById(id).innerText="0"; }
-        function copyNotes() {
-            const t=document.getElementById('tempNotes'); t.select(); navigator.clipboard.writeText(t.value);
-            const prev=document.getElementById('mainComments').value;
-            if(prev) document.getElementById('mainComments').value = prev + "\n" + t.value; else document.getElementById('mainComments').value = t.value;
-        }
-        function parseSystemDate() {
-            const raw = document.getElementById('pasteDateInput').value; 
-            if(!raw) return;
-            const parts = raw.split(' ');
-            if(parts.length >= 2) {
-                document.getElementById('fechaLlamada').value = parts[0];
-                document.getElementById('horaLlamada').value = parts[1].substring(0,5);
-                calcSemana();
-                document.getElementById('pasteDateInput').value = ""; 
-            }
-        }
-        function setTheme(color) {
-            const nav = document.getElementById('mainNav');
-            const dockR = document.getElementById('dockHeader');
-            const dockL = document.querySelector('#audioDock > div:first-child');
-            let bgClass = 'bg-slate-900', btnClass = 'bg-slate-800';
-            if(color === 'blue') { bgClass = 'bg-blue-900'; btnClass = 'bg-blue-800'; }
-            if(color === 'emerald') { bgClass = 'bg-emerald-900'; btnClass = 'bg-emerald-800'; }
-            if(color === 'rose') { bgClass = 'bg-rose-900'; btnClass = 'bg-rose-800'; }
-            nav.className = `${bgClass} text-white px-6 py-2 flex justify-between items-center shadow-md shrink-0 z-50 transition-colors duration-300`;
-            dockR.className = `${btnClass} text-white p-3 rounded-t-xl flex justify-between items-center cursor-move`;
-            dockL.className = `${btnClass} text-white p-3 rounded-t-xl flex justify-between items-center cursor-move`;
-            document.getElementById('openToolsBtn').className = `fixed right-0 top-24 ${btnClass} text-white p-3 rounded-l-lg shadow-lg z-50 hover:brightness-110 transition hidden`;
-            document.getElementById('openAudioBtn').className = `fixed left-0 top-32 ${btnClass} text-white p-3 rounded-r-lg shadow-lg z-50 hover:brightness-110 transition hidden`;
-        }
-        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
-        // --------------------------
+        function copyNotes() { const t=document.getElementById('tempNotes'); navigator.clipboard.writeText(t.value); }
+        function calcSemana() { const f=document.getElementById('fechaLlamada').value; if(f) document.getElementById('inputSemana').value="Semana "+Math.ceil(new Date(f).getDate()/7); }
 
         function renderFormTable() {
-            const tb=document.getElementById('tablaItems'); tb.innerHTML="";
-            let lc="";
+            const tb=document.getElementById('tablaItems'); tb.innerHTML=""; let lc="";
             pautaItems.forEach(i => {
                 if(i.cat!==lc){tb.innerHTML+=`<tr><td colspan="4" class="p-2 font-bold text-center ${i.cat==='PEC'?'text-red-600 bg-red-50':'text-blue-600 bg-blue-50'} border-y text-[10px] uppercase">${i.cat}</td></tr>`; lc=i.cat;}
                 tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="p-2 relative"><div class="tooltip-container"><span class="font-bold text-slate-700 text-[10px] border-b border-dotted border-slate-400 cursor-help">${i.label}</span><span class="tooltip-text">${i.tip}</span></div></td><td class="p-2 text-center"><select name="${i.name}" class="w-full border rounded p-1 text-[10px] font-bold ${i.cat==='PEC'?'critical':'weighted'}" data-w="${i.w||0}" onchange="updateRow(this)"><option value="">-</option><option value="SI">SI</option><option value="NO">NO</option></select></td><td class="p-2 text-center status-cell">-</td><td class="p-2"><input class="desc-input hidden w-full border border-red-300 rounded p-1 text-[10px]" placeholder="Detalle..."></td></tr>`;
             });
         }
-
-        function updateRow(s) {
-            const r=s.closest('tr'), sc=r.querySelector('.status-cell'), i=r.querySelector('.desc-input');
-            i.classList.add('hidden');
-            if(s.value==='SI') sc.innerHTML='<span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span>';
-            else if(s.value==='NO') { sc.innerHTML='<span class="text-red-600 font-bold bg-red-50 px-1 rounded text-[9px]">NO</span>'; i.classList.remove('hidden'); i.focus(); }
-            else sc.innerHTML='-';
-            calcScore();
-        }
-
-        function calcScore() {
-            let t=0,m=0,c=false;
-            document.querySelectorAll('.critical').forEach(s=>{if(s.value==='NO')c=true});
-            document.querySelectorAll('.weighted').forEach(s=>{const w=parseFloat(s.dataset.w);if(s.value==='SI'){t+=w;m+=w}else if(s.value==='NO')m+=w});
-            const f=(!c && m>0)?Math.round((t/m)*100):(c?0:0);
-            const d=document.getElementById('totalScore'); d.innerText=f+"%";
-            document.getElementById('notaFinalHidden').value=f+"%";
-            d.className="font-black text-2xl text-center "+(c||f===0?"text-red-500":(f>=85?"text-emerald-500":"text-yellow-500"));
-        }
-
-        function calcSemana() { const f=document.getElementById('fechaLlamada').value; if(f) document.getElementById('inputSemana').value="Semana "+Math.ceil(new Date(f).getDate()/7); }
+        function updateRow(s) { const r=s.closest('tr'), sc=r.querySelector('.status-cell'), i=r.querySelector('.desc-input'); i.classList.add('hidden'); if(s.value==='SI') sc.innerHTML='<span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span>'; else if(s.value==='NO') { sc.innerHTML='<span class="text-red-600 font-bold bg-red-50 px-1 rounded text-[9px]">NO</span>'; i.classList.remove('hidden'); i.focus(); } else sc.innerHTML='-'; calcScore(); }
+        function calcScore() { let t=0,m=0,c=false; document.querySelectorAll('.critical').forEach(s=>{if(s.value==='NO')c=true}); document.querySelectorAll('.weighted').forEach(s=>{const w=parseFloat(s.dataset.w);if(s.value==='SI'){t+=w;m+=w}else if(s.value==='NO')m+=w}); const f=(!c && m>0)?Math.round((t/m)*100):(c?0:0); const d=document.getElementById('totalScore'); d.innerText=f+"%"; document.getElementById('notaFinalHidden').value=f+"%"; d.className="font-black text-2xl text-center "+(c||f===0?"text-red-500":(f>=85?"text-emerald-500":"text-yellow-500")); }
 
         document.getElementById('auditForm').addEventListener('submit',function(e){
-            e.preventDefault();
-            const b=document.getElementById('btnGuardar'), ot=b.innerHTML;
+            e.preventDefault(); const b=document.getElementById('btnGuardar'), ot=b.innerHTML;
             if(!document.getElementById('inputCodigo').value) return Swal.fire("Error","Selecciona ejecutivo","warning");
             b.innerHTML='GUARDANDO...'; b.disabled=true;
             document.getElementById('fechaAuditoria').value=new Date().toISOString().split('T')[0];
@@ -449,128 +399,51 @@
             .catch(()=>{Swal.fire("Error","Fallo conexión","error");b.innerHTML=ot;b.disabled=false;});
         });
 
-        // --- NAVBAR & TAB LOGIC (CORREGIDO) ---
         function cambiarTab(id){
-            // 1. Ocultar todas las pestañas
             ['tabIngreso','tabDashboard','tabApelaciones'].forEach(t=>document.getElementById(t).classList.add('hidden'));
-            
-            // 2. Mostrar la seleccionada
             document.getElementById(id).classList.remove('hidden');
-            
-            // 3. Gestionar Docks
             const showDocks = (id === 'tabIngreso');
             document.getElementById('auditTools').classList.toggle('hidden', !showDocks);
             document.getElementById('audioDock').classList.toggle('hidden', !showDocks);
-            if(!showDocks) {
-                document.getElementById('openToolsBtn').classList.add('hidden');
-                document.getElementById('openAudioBtn').classList.add('hidden');
-            }
-
-            // 4. Actualizar botones Navbar (Highlight)
-            const btns = ['navBtnIngreso', 'navBtnDash', 'navBtnApel'];
-            btns.forEach(b => {
-                const el = document.getElementById(b);
-                el.classList.remove('active-tab');
-                el.classList.add('opacity-60'); 
-            });
+            if(!showDocks) { document.getElementById('openToolsBtn').classList.add('hidden'); document.getElementById('openAudioBtn').classList.add('hidden'); }
+            ['navBtnIngreso', 'navBtnDash', 'navBtnApel'].forEach(b => { document.getElementById(b).classList.remove('active-tab'); document.getElementById(b).classList.add('opacity-60'); });
             const activeBtn = id === 'tabIngreso' ? 'navBtnIngreso' : (id === 'tabDashboard' ? 'navBtnDash' : 'navBtnApel');
-            const elActive = document.getElementById(activeBtn);
-            elActive.classList.add('active-tab');
-            elActive.classList.remove('opacity-60');
-
-            // 5. Cargar Data si es Dashboard
-            if(id==='tabDashboard') {
-                if(RAW_DATA.length > 0) aplicarFiltros(); // Forzar repintado si ya hay data
-                else loadData(); // Cargar si está vacío
-            }
+            const elActive = document.getElementById(activeBtn); elActive.classList.add('active-tab'); elActive.classList.remove('opacity-60');
+            if(id==='tabDashboard' || id==='tabApelaciones') { if(RAW_DATA.length > 0) { aplicarFiltros(); renderApelaciones(RAW_DATA); } else { loadData(); } }
         }
 
-        // --- FUNCIÓN DE CARGA ROBUSTA (Doble Motor) ---
         async function loadData() {
-            const loader = document.getElementById('loadingIndicator');
-            if(loader) loader.classList.remove('hidden');
-            
-            let data = null;
+            const loader = document.getElementById('loadingIndicator'); if(loader) loader.classList.remove('hidden');
+            let data = await intentarFetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
+            if (!data) data = await intentarFetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
+            if (!data) data = await intentarFetch("https://corsproxy.io/?" + encodeURIComponent(API_URL + "?t=" + Date.now()));
 
-            // INTENTO 1: CodeTabs (Suele ser el más rápido)
-            console.log("Intentando vía CodeTabs...");
-            data = await intentarFetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
-            
-            // INTENTO 2: AllOrigins (Si falla el 1, probamos este - El que tenías antes)
-            if (!data) {
-                console.warn("Fallo CodeTabs, intentando AllOrigins...");
-                data = await intentarFetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
-            }
-
-            // INTENTO 3: CorsProxy (Último recurso, ideal para redes corporativas)
-            if (!data) {
-                console.warn("Fallo AllOrigins, intentando CorsProxy...");
-                data = await intentarFetch("https://corsproxy.io/?" + encodeURIComponent(API_URL + "?t=" + Date.now()));
-            }
-
-            // PROCESAR RESULTADO
             if(Array.isArray(data)) {
                 RAW_DATA = data;
-                fillSelects(RAW_DATA); 
-                aplicarFiltros(); 
-                // Aseguramos que existan las funciones antes de llamarlas (por si acaso)
-                if(typeof renderApelaciones === 'function') renderApelaciones(RAW_DATA);
-            } else {
-                console.error("Fallo total de conexión");
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de Conexión',
-                    text: 'No se pudo descargar la base de datos. Es posible que la red de este equipo tenga bloqueos de seguridad (Firewall). Intenta usar datos móviles o una red externa.',
-                    confirmButtonColor: '#e11d48'
-                });
-            }
-            
+                fillSelects(RAW_DATA); aplicarFiltros(); renderApelaciones(RAW_DATA);
+            } else { Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar a la base de datos (Bloqueo de Red).'}); }
             if(loader) loader.classList.add('hidden');
         }
-
-        // Función auxiliar para probar conexiones
-        async function intentarFetch(url) {
-            try {
-                const resp = await fetch(url);
-                if (!resp.ok) return null;
-                const json = await resp.json();
-                return Array.isArray(json) ? json : null;
-            } catch (e) {
-                return null;
-            }
-        }
+        async function intentarFetch(url) { try { const resp = await fetch(url); if (!resp.ok) return null; const json = await resp.json(); return Array.isArray(json) ? json : null; } catch (e) { return null; } }
 
         function fillSelects(data){
             const mS=document.getElementById('fMes'), sP=document.getElementById('fSup'), sV=document.getElementById('fServ');
             const saveM=mS.value; 
             mS.innerHTML='<option value="TODOS">📅 Histórico</option>'; sP.innerHTML='<option value="TODOS">Todos</option>'; sV.innerHTML='<option value="TODOS">Todos</option>';
             const ms=new Set(), sp=new Set(), sv=new Set();
-            data.forEach(d=>{
-                let f=d.FECHA_LLAMADA||d.FECHA; if(f&&f.length>=7)ms.add(f.substring(0,7));
-                sp.add(d.SUPERVISOR); sv.add(d.SERVICIO);
-            });
-            Array.from(ms).sort().reverse().forEach(m=>{
-                mS.add(new Option(`📅 ${m}`,m));
-                const sems=new Set(); data.filter(d=>(d.FECHA_LLAMADA||d.FECHA).startsWith(m)).forEach(d=>sems.add(d.SEMANA));
-                Array.from(sems).sort().forEach(s=>mS.add(new Option(`↳ ${s}`,`${m}|${s}`)));
-            });
+            data.forEach(d=>{ let f=d.FECHA_LLAMADA||d.FECHA; if(f&&f.length>=7)ms.add(f.substring(0,7)); sp.add(d.SUPERVISOR); sv.add(d.SERVICIO); });
+            Array.from(ms).sort().reverse().forEach(m=>{ mS.add(new Option(`📅 ${m}`,m)); const sems=new Set(); data.filter(d=>(d.FECHA_LLAMADA||d.FECHA).startsWith(m)).forEach(d=>sems.add(d.SEMANA)); Array.from(sems).sort().forEach(s=>mS.add(new Option(`↳ ${s}`,`${m}|${s}`))); });
             Array.from(sp).sort().forEach(s=>sP.add(new Option(s,s))); Array.from(sv).sort().forEach(s=>sV.add(new Option(s,s)));
-            // Restaurar seleccion si existe
             if(saveM) mS.value = saveM;
         }
 
         function aplicarFiltros(){
             const fm=document.getElementById('fMes').value, fsp=document.getElementById('fSup').value, fsv=document.getElementById('fServ').value, fs=document.getElementById('fSearch').value.toLowerCase();
-            // Label Logic
-            let label = "Todo el Historial";
-            if(fm !== "TODOS") label = fm.includes('|') ? `Filtrado: ${fm.split('|')[0]} - ${fm.split('|')[1]}` : `Filtrado: ${fm} (Mes Completo)`;
-            document.getElementById('lblPeriodoCobertura').innerText = label;
-
+            document.getElementById('lblPeriodoCobertura').innerText = fm !== "TODOS" ? (fm.includes('|') ? `Filtrado: ${fm.split('|')[0]} - ${fm.split('|')[1]}` : `Filtrado: ${fm}`) : "Todo el Historial";
             FILTERED_DATA=RAW_DATA.filter(d=>{
                 let f=d.FECHA_LLAMADA||d.FECHA;
                 if(fm!=='TODOS'){ if(fm.includes('|')){const[m,s]=fm.split('|');if(!f.startsWith(m)||d.SEMANA!==s)return false}else if(!f.startsWith(fm))return false }
-                if(fsp!=='TODOS'&&d.SUPERVISOR!==fsp)return false; if(fsv!=='TODOS'&&d.SERVICIO!==fsv)return false; if(fs&&!d.NOMBRE.toLowerCase().includes(fs))return false;
-                return true;
+                if(fsp!=='TODOS'&&d.SUPERVISOR!==fsp)return false; if(fsv!=='TODOS'&&d.SERVICIO!==fsv)return false; if(fs&&!d.NOMBRE.toLowerCase().includes(fs))return false; return true;
             });
             renderDash();
         }
@@ -582,10 +455,13 @@
             const sMap={}; d.forEach(x=>{if(!sMap[x.SUPERVISOR])sMap[x.SUPERVISOR]={t:0,g:0,p:0,pc:0,f:0}; let n=parseFloat(x.NOTA.replace('%',''))||0; sMap[x.SUPERVISOR].t++; sMap[x.SUPERVISOR].g+=n; if(n>0){sMap[x.SUPERVISOR].p+=n;sMap[x.SUPERVISOR].pc++} if(x.FEEDBACK_STATUS==='REALIZADO')sMap[x.SUPERVISOR].f++});
             const sc=document.getElementById('supervisorCards'); sc.innerHTML="";
             Object.keys(sMap).forEach(k=>{
-                let v=sMap[k]; sc.innerHTML+=`<div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200"><h4 class="font-bold text-xs text-slate-700">${k}</h4><div class="grid grid-cols-3 gap-1 text-center mt-2 text-[10px]"><div><p class="text-slate-400">Gen</p><p class="font-bold text-indigo-600">${v.t?(v.g/v.t).toFixed(0):0}%</p></div><div><p class="text-slate-400">PENC</p><p class="font-bold text-emerald-500">${v.pc?(v.p/v.pc).toFixed(0):0}%</p></div><div><p class="text-slate-400">Feed</p><p class="font-bold text-purple-500">${v.t?((v.f/v.t)*100).toFixed(0):0}%</p></div></div></div>`;
+                let v=sMap[k];
+                let gen = v.t?(v.g/v.t).toFixed(0):0; let penc = v.pc?(v.p/v.pc).toFixed(0):0; let feed = v.t?((v.f/v.t)*100).toFixed(0):0;
+                let colGen = gen >= 85 ? 'text-emerald-600' : 'text-red-600'; let colPenc = penc >= 85 ? 'text-emerald-600' : 'text-red-600';
+                sc.innerHTML+=`<div class="bg-white p-5 rounded-2xl shadow border border-slate-200 hover:shadow-lg transition"><h4 class="font-black text-sm text-slate-700 border-b border-slate-100 pb-2 mb-3">${k}</h4><div class="grid grid-cols-3 gap-2 text-center text-xs"><div><p class="text-slate-400 font-bold uppercase text-[9px]">General</p><p class="text-2xl font-black ${colGen}">${gen}%</p></div><div class="border-x border-slate-100"><p class="text-slate-400 font-bold uppercase text-[9px]">PENC</p><p class="text-2xl font-black ${colPenc}">${penc}%</p></div><div><p class="text-slate-400 font-bold uppercase text-[9px]">Feed</p><p class="text-2xl font-black text-purple-500">${feed}%</p></div></div></div>`;
             });
             
-            // 2. Exec Summary
+            // 2. Exec Table
             const eMap={}; baseEjecutivos.forEach(e=>eMap[e.nombre]={n:e.nombre,s:e.sup,sv:e.serv,c:0});
             d.forEach(x=>{if(eMap[x.NOMBRE])eMap[x.NOMBRE].c++});
             let arr=Object.values(eMap);
@@ -593,57 +469,145 @@
             if(fSup!=='TODOS') arr=arr.filter(x=>x.s===fSup); if(fServ!=='TODOS') arr=arr.filter(x=>x.sv===fServ); if(fSearch) arr=arr.filter(x=>x.n.toLowerCase().includes(fSearch));
             arr.sort((a,b)=>a.c-b.c);
             const tb=document.getElementById('execSummaryTable'); tb.innerHTML="";
-            arr.forEach(x=>{
-                const cClass = x.c===0 ? "text-red-500 bg-red-50" : "text-slate-700";
-                tb.innerHTML+=`<tr class="border-b border-slate-100 hover:bg-slate-50 transition"><td class="p-2 font-bold">${x.n}</td><td class="p-2 text-[10px]">${x.s}</td><td class="p-2 text-[10px]">${x.sv}</td><td class="p-2 text-center font-black ${cClass}">${x.c}</td></tr>`
-            });
+            arr.forEach(x=>{ const cClass = x.c===0 ? "text-red-500 bg-red-50" : "text-slate-700"; tb.innerHTML+=`<tr class="border-b border-slate-100 hover:bg-slate-50 transition"><td class="p-2 font-bold">${x.n}</td><td class="p-2 text-[10px]">${x.s}</td><td class="p-2 text-[10px]">${x.sv}</td><td class="p-2 text-center font-black ${cClass}">${x.c}</td></tr>`; });
 
-            // 3. KPIs & Detail
+            // 3. KPIs Globales
             const ns=d.map(x=>parseFloat(x.NOTA.replace('%',''))||0);
+            const promGen = ns.length ? (ns.reduce((a,b)=>a+b,0)/ns.length).toFixed(0) : 0;
+            const colPromGen = promGen >= 85 ? 'text-emerald-700' : 'text-red-600';
             document.getElementById('kpiTotal').innerText=ns.length;
-            document.getElementById('kpiGeneral').innerText=(ns.length?ns.reduce((a,b)=>a+b,0)/ns.length:0).toFixed(0)+"%";
-            
-            const pencNotes=ns.filter(n=>n>0);
-            document.getElementById('kpiPenc').innerText=(pencNotes.length?pencNotes.reduce((a,b)=>a+b,0)/pencNotes.length:0).toFixed(0)+"%";
-            
+            const kpiGenEl = document.getElementById('kpiGeneral'); kpiGenEl.innerText = promGen + "%"; kpiGenEl.className = `text-xl font-black ${colPromGen}`;
+            document.getElementById('kpiPenc').innerText=(ns.filter(n=>n>0).length?ns.filter(n=>n>0).reduce((a,b)=>a+b,0)/ns.filter(n=>n>0).length:0).toFixed(0)+"%";
             document.getElementById('kpiCountPec').innerText=ns.filter(n=>n===0).length;
             document.getElementById('kpiFeedback').innerText=d.filter(x=>x.FEEDBACK_STATUS==='REALIZADO').length;
             document.getElementById('kpiApel').innerText=d.filter(x=>x.APELACION_ESTADO!=="").length;
 
-            // Recalculate Penc Count (Leves)
+            // 4. TOPS y QUIEBRES (Corregido con Nombres Reales)
             let pencErrors = 0;
+            let pecCounts = {};
+            let pencCounts = {};
+
             d.forEach(x => {
                 if(x.DETALLE) {
                     for(const [k, v] of Object.entries(x.DETALLE)) {
                         if(v === 'NO') {
-                            const isPec = ["Validación", "Confidencialidad", "Normas", "Abandono", "Registro"].some(pk => k.includes(pk));
-                            if(!isPec) pencErrors++;
+                            // Detectar Categoría por prefijo técnico
+                            const isPec = ["SEG_", "COND_", "OP_", "SIST_"].some(pre => k.startsWith(pre));
+                            // Traducir nombre
+                            const nombreReal = INDICADORES_MAP[k] || k;
+                            
+                            if(isPec) {
+                                pecCounts[nombreReal] = (pecCounts[nombreReal] || 0) + 1;
+                            } else {
+                                pencCounts[nombreReal] = (pencCounts[nombreReal] || 0) + 1;
+                                pencErrors++;
+                            }
                         }
                     }
                 }
             });
             document.getElementById('kpiCountPenc').innerText = pencErrors;
-            
+            renderTopList('listTopPec', pecCounts, 'text-red-600', 'bg-red-50');
+            renderTopList('listTopPenc', pencCounts, 'text-orange-600', 'bg-orange-50');
             renderTable();
+        }
+
+        function renderTopList(elementId, countsObj, textClass, bgClass) {
+            const ul = document.getElementById(elementId); ul.innerHTML = "";
+            const sorted = Object.entries(countsObj).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            if(sorted.length === 0) { ul.innerHTML = "<li class='text-slate-400 italic text-center'>Sin datos</li>"; return; }
+            sorted.forEach(([key, count]) => { ul.innerHTML += `<li class="flex justify-between items-center border-b border-slate-100 pb-1 last:border-0"><span class="font-bold text-[10px] text-slate-600 truncate w-3/4" title="${key}">${key}</span><span class="${bgClass} ${textClass} px-2 py-0.5 rounded-full font-black text-[10px]">${count}</span></li>`; });
         }
 
         function renderTable(){
             const tb=document.getElementById('mainTable'); tb.innerHTML="";
             FILTERED_DATA.forEach(d=>{
-                tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100 cursor-pointer" onclick='showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'><td class="p-2 text-[10px]">${d.CODIGO}</td><td class="p-2 font-bold">${d.NOMBRE}</td><td class="p-2 text-[10px]">${d.SUPERVISOR}</td><td class="p-2 text-[10px]">${d.FECHA_LLAMADA||d.FECHA}</td><td class="p-2 text-[10px]">${d.SEMANA}</td><td class="p-2 text-[10px]">${d.SERVICIO}</td><td class="p-2 text-center font-bold">${d.NOTA}</td><td class="p-2 text-center text-[10px]">${d.FEEDBACK_STATUS}</td><td class="p-2 text-center"><i class="fas fa-eye text-slate-300"></i></td></tr>`;
+                const n = parseFloat(d.NOTA.replace('%',''));
+                const col = n >= 85 ? 'text-emerald-600' : (n===0 ? 'text-red-600' : 'text-amber-600');
+                tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100 cursor-pointer group" onclick='showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'><td class="p-2 text-[10px] text-slate-400">${d.CODIGO}</td><td class="p-2 font-bold text-slate-700">${d.NOMBRE}</td><td class="p-2 text-[10px]">${d.SUPERVISOR}</td><td class="p-2 text-[10px] font-mono">${d.FECHA_LLAMADA||d.FECHA}</td><td class="p-2 text-[10px]">${d.SEMANA}</td><td class="p-2 text-[10px]">${d.SERVICIO}</td><td class="p-2 text-center font-black ${col}">${d.NOTA}</td><td class="p-2 text-center text-[10px]">${d.FEEDBACK_STATUS==='REALIZADO'?'✅':'⏳'}</td><td class="p-2 text-center"><i class="fas fa-eye text-slate-300 group-hover:text-indigo-500 transition"></i></td></tr>`;
             });
         }
 
+        // --- DETALLE FULL ---
         function showDetail(d){
-            let items="";
-            if(d.DETALLE) Object.entries(d.DETALLE).forEach(([k,v])=>{if(v==='NO')items+=`<li class="text-xs text-red-600 mb-1 border-l-2 border-red-200 pl-2"><span class="font-bold block">${k}</span></li>`});
-            Swal.fire({title:d.NOMBRE, html:`<div class="text-left"><p class="text-sm bg-slate-50 p-2 italic mb-2">"${d.OBS.split('---')[0]}"</p><ul class="max-h-32 overflow-auto">${items||'<li class="text-emerald-500">Sin quiebres</li>'}</ul></div>`});
+            let itemsHtml = "";
+            let tieneQuiebres = false;
+
+            if(d.DETALLE) {
+                Object.entries(d.DETALLE).forEach(([k,v])=>{
+                    if(v==='NO') {
+                        tieneQuiebres = true;
+                        const isPec = ["SEG_", "COND_", "OP_", "SIST_"].some(pre => k.startsWith(pre));
+                        const nombreReal = INDICADORES_MAP[k] || k;
+                        const badge = isPec ? '<span class="bg-red-100 text-red-600 px-1 rounded text-[9px] font-bold">PEC</span>' : '<span class="bg-orange-100 text-orange-600 px-1 rounded text-[9px] font-bold">PENC</span>';
+                        
+                        // Extraer observación específica
+                        let safeName = nombreReal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        let regex = new RegExp(`•\\s*${safeName}.*?:\\s*(.*?)(?:\\n|$)`, 'i');
+                        let match = d.OBS.match(regex);
+                        let obsSpec = match && match[1].trim() ? `<div class="mt-1 text-[10px] text-slate-500 italic pl-2 border-l border-slate-300">"${match[1].trim()}"</div>` : '';
+
+                        itemsHtml += `<li class="text-xs text-slate-600 mb-2 border-b border-slate-50 pb-2"><div class="flex items-center justify-between"><span>${nombreReal}</span> ${badge}</div>${obsSpec}</li>`;
+                    }
+                });
+            }
+            if(!tieneQuiebres) itemsHtml = '<li class="text-emerald-500 italic text-center py-2">✨ Felicitaciones, sin errores.</li>';
+
+            // Audio Player
+            let audioSection = "";
+            if (d.AUDIO_URL && d.AUDIO_URL.length > 5) {
+                audioSection = `<div class="bg-slate-100 p-2 rounded border border-slate-200 mb-3"><p class="text-[9px] font-bold text-slate-400 uppercase mb-1"><i class="fas fa-play-circle"></i> Audio Llamada</p><audio controls src="${d.AUDIO_URL}" class="w-full h-8"></audio></div>`;
+            } else {
+                audioSection = `<div class="bg-gray-50 p-2 rounded border border-gray-200 mb-3 text-center text-xs text-gray-400 italic">Audio no disponible</div>`;
+            }
+
+            // Feedback
+            let feedHtml = d.FEEDBACK_STATUS === 'REALIZADO' ? `<div class="mt-3 bg-indigo-50 p-2 rounded border border-indigo-100"><p class="text-[9px] font-bold text-indigo-500 uppercase mb-1"><i class="fas fa-check-circle"></i> Feedback Realizado</p><p class="text-xs text-indigo-800 italic">"${d.FEEDBACK_TXT || ''}"</p></div>` : `<div class="mt-3 bg-orange-50 p-2 rounded border border-orange-100 text-center"><p class="text-[10px] font-bold text-orange-500 uppercase">Feedback Pendiente ⏳</p></div>`;
+
+            const rutPac = d.RUT_PACIENTE || 'No registrado';
+
+            Swal.fire({
+                title: `<div class="text-left"><span class="text-xs text-slate-400 font-normal uppercase block">Detalle Evaluación</span>${d.NOMBRE}</div>`,
+                html: `
+                    <div class="text-left">
+                        <div class="flex justify-between items-center mb-4">
+                            <div><span class="block text-[9px] font-bold text-slate-400 uppercase">RUT Paciente</span><div class="flex items-center gap-2"><span class="font-mono text-xs font-bold bg-slate-100 px-2 rounded">${rutPac}</span><button onclick="copiarRut('${rutPac}')" class="text-indigo-500 hover:text-indigo-700" title="Copiar"><i class="fas fa-copy"></i></button></div></div>
+                            <div class="text-right"><span class="text-6xl font-black ${parseFloat(d.NOTA)>=85?'text-emerald-500':(parseFloat(d.NOTA)===0?'text-red-500':'text-amber-500')} tracking-tighter leading-none">${d.NOTA}</span><span class="block text-[9px] text-slate-300 font-bold uppercase">Nota Final</span></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[10px] bg-slate-50 p-2 rounded mb-3 border border-slate-100">
+                            <div><span class="font-bold text-slate-400">Fecha:</span> ${d.FECHA_LLAMADA||d.FECHA} ${d.HORA_LLAMADA||''}</div>
+                            <div><span class="font-bold text-slate-400">Semana:</span> ${d.SEMANA}</div>
+                            <div><span class="font-bold text-slate-400">Auditor:</span> ${d.AUDITOR_REAL || d.AUDITOR || 'Admin'}</div>
+                            <div><span class="font-bold text-slate-400">Supervisor:</span> ${d.SUPERVISOR}</div>
+                        </div>
+                        ${audioSection}
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Observación General</p>
+                        <div class="text-xs bg-slate-50 p-2 italic mb-3 border border-slate-100 rounded text-slate-600">"${d.OBS.split('---')[0]}"</div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Detalle Quiebres</p>
+                        <ul class="max-h-32 overflow-y-auto pr-1 mb-2 custom-scrollbar">${itemsHtml}</ul>
+                        ${feedHtml}
+                    </div>`,
+                width: '550px', showCloseButton: true, showConfirmButton: false, customClass: { popup: 'rounded-2xl' }
+            });
         }
 
-        function renderApelaciones(data) { /* Same */ }
-        function exportarExcel() { /* Same */ }
+        function copiarRut(rut) { navigator.clipboard.writeText(rut).then(() => Swal.showValidationMessage('RUT Copiado')); }
+
+        function renderApelaciones(data) {
+            const cont = document.getElementById('contApelaciones');
+            const apels = data.filter(d => d.APELACION_ESTADO && d.APELACION_ESTADO !== "");
+            cont.innerHTML = "";
+            if(apels.length === 0) { cont.innerHTML = `<div class="text-center py-10 bg-white rounded-xl border border-slate-200"><i class="fas fa-check-circle text-4xl text-emerald-200 mb-2"></i><p class="text-slate-400 font-bold text-sm">No hay apelaciones pendientes.</p></div>`; return; }
+            apels.forEach(d => {
+                const isPend = d.APELACION_ESTADO === 'PENDIENTE';
+                const statusBadge = isPend ? '<span class="bg-pink-100 text-pink-600 px-2 py-1 rounded text-[10px] font-bold animate-pulse">PENDIENTE</span>' : `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold">${d.APELACION_ESTADO}</span>`;
+                cont.innerHTML += `<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 ${isPend ? 'border-pink-500' : 'border-slate-300'} relative"><div class="flex justify-between items-start mb-3"><div><h4 class="font-bold text-slate-700">${d.NOMBRE}</h4><p class="text-[10px] text-slate-400 uppercase font-bold">${d.FECHA_LLAMADA} • Nota: ${d.NOTA}</p></div>${statusBadge}</div><div class="bg-pink-50 p-3 rounded-lg border border-pink-100 mb-3"><p class="text-[10px] font-bold text-pink-400 uppercase mb-1"><i class="fas fa-comment-alt"></i> Argumento:</p><p class="text-xs text-slate-700 italic">"${d.APELACION_TXT}"</p></div><div class="flex justify-end gap-2"><button onclick="showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})" class="text-xs text-slate-500 font-bold px-3 py-2 bg-slate-50 rounded border hover:bg-slate-100">Ver Auditoría</button>${isPend ? `<a href="https://wa.me/?text=Hola ${d.NOMBRE}, sobre tu apelación..." target="_blank" class="text-xs bg-emerald-500 text-white font-bold px-3 py-2 rounded hover:bg-emerald-600 flex items-center gap-2"><i class="fab fa-whatsapp"></i> Responder</a>` : ''}</div></div>`;
+            });
+        }
+
+        function exportarExcel() { 
+            const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(FILTERED_DATA); XLSX.utils.book_append_sheet(wb, ws, "Reporte_QA"); XLSX.writeFile(wb, "Reporte_Calidad.xlsx");
+        }
     </script>
 </body>
-
 </html>
-
