@@ -485,14 +485,59 @@
             }
         }
 
-        // --- DASHBOARD LOGIC (FIXED) ---
-        async function loadData(){
-            document.getElementById('loadingIndicator').classList.remove('hidden');
-            try{
-                const r=await fetch("https://api.allorigins.win/raw?url="+encodeURIComponent(API_URL+"?t="+Date.now()));
-                RAW_DATA=await r.json();
-                if(RAW_DATA.length){ fillSelects(RAW_DATA); aplicarFiltros(); renderApelaciones(RAW_DATA); }
-            }catch(e){console.error(e)}finally{document.getElementById('loadingIndicator').classList.add('hidden')}
+        // --- FUNCIÓN DE CARGA ROBUSTA (Doble Motor) ---
+        async function loadData() {
+            const loader = document.getElementById('loadingIndicator');
+            if(loader) loader.classList.remove('hidden');
+            
+            let data = null;
+
+            // INTENTO 1: CodeTabs (Suele ser el más rápido)
+            console.log("Intentando vía CodeTabs...");
+            data = await intentarFetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
+            
+            // INTENTO 2: AllOrigins (Si falla el 1, probamos este - El que tenías antes)
+            if (!data) {
+                console.warn("Fallo CodeTabs, intentando AllOrigins...");
+                data = await intentarFetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
+            }
+
+            // INTENTO 3: CorsProxy (Último recurso, ideal para redes corporativas)
+            if (!data) {
+                console.warn("Fallo AllOrigins, intentando CorsProxy...");
+                data = await intentarFetch("https://corsproxy.io/?" + encodeURIComponent(API_URL + "?t=" + Date.now()));
+            }
+
+            // PROCESAR RESULTADO
+            if(Array.isArray(data)) {
+                RAW_DATA = data;
+                fillSelects(RAW_DATA); 
+                aplicarFiltros(); 
+                // Aseguramos que existan las funciones antes de llamarlas (por si acaso)
+                if(typeof renderApelaciones === 'function') renderApelaciones(RAW_DATA);
+            } else {
+                console.error("Fallo total de conexión");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Conexión',
+                    text: 'No se pudo descargar la base de datos. Es posible que la red de este equipo tenga bloqueos de seguridad (Firewall). Intenta usar datos móviles o una red externa.',
+                    confirmButtonColor: '#e11d48'
+                });
+            }
+            
+            if(loader) loader.classList.add('hidden');
+        }
+
+        // Función auxiliar para probar conexiones
+        async function intentarFetch(url) {
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) return null;
+                const json = await resp.json();
+                return Array.isArray(json) ? json : null;
+            } catch (e) {
+                return null;
+            }
         }
 
         function fillSelects(data){
@@ -601,3 +646,4 @@
 </body>
 
 </html>
+
