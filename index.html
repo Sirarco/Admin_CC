@@ -322,22 +322,110 @@
         };
 
         const pautaItems = [
-            {cat:"PEC", label:"Validación Identidad", name:"item_validacion", tip:"Solicita RUT y Nombre completo."},
-            {cat:"PEC", label:"Confidencialidad", name:"item_confidencialidad", tip:"Resguardo de datos sensibles."},
-            {cat:"PEC", label:"Normas de Conducta", name:"item_normas", tip:"No grita, no corta llamada."},
-            {cat:"PEC", label:"Abandono", name:"item_abandono", tip:"No deja en mudo excesivo."},
-            {cat:"PEC", label:"Registro", name:"item_registro", tip:"Deja nota o glosa."},
-            {cat:"PENC", label:"Script Inicio/Cierre (5%)", name:"item_script", w:5, tip:"Saludo institucional y despedida."},
-            {cat:"PENC", label:"Cortesía y Trato (5%)", name:"item_cortesia", w:5, tip:"Usa 'Usted', por favor, gracias."},
-            {cat:"PENC", label:"Sondeo (15%)", name:"item_sondeo", w:15, tip:"Preguntas correctas."},
-            {cat:"PENC", label:"Entrega Información (20%)", name:"item_info", w:20, tip:"Info correcta y completa."},
-            {cat:"PENC", label:"Manejo Tiempos (10%)", name:"item_tiempos", w:10, tip:"Retoma cada 45 segs."},
-            {cat:"PENC", label:"Aseguramiento (10%)", name:"item_aseguramiento", w:10, tip:"Valida entendimiento."},
-            {cat:"PENC", label:"Personalización (5%)", name:"item_personalizacion", w:5, tip:"Usa el nombre del paciente."},
-            {cat:"PENC", label:"Lenguaje (5%)", name:"item_lenguaje", w:5, tip:"Modulación clara."},
-            {cat:"PENC", label:"Empatía (10%)", name:"item_empatia", w:10, tip:"Conecta emocionalmente."},
-            {cat:"PENC", label:"Tipificación (15%)", name:"item_tipificacion", w:15, tip:"Motivo correcto en CRM."}
-        ];
+    // --- PEC (Errores Críticos) ---
+    {
+        cat: "PEC", 
+        label: "Validación Identidad", 
+        name: "item_validacion", 
+        tip: "• Solicita RUT y Nombre completo del paciente.\n• Si es un tercero: Valida datos del paciente Y solicita nombre/RUT/parentesco del tercero.\n• Si el paciente se niega a dar el RUT, explica que por normativa no puede entregar información sensible."
+    },
+    {
+        cat: "PEC", 
+        label: "Confidencialidad", 
+        name: "item_confidencialidad", 
+        tip: "• Se limita a dar información administrativa (horas, ubicación).\n• Si debe dar info sensible, valida estrictamente que habla con el titular.\n• NO informa diagnósticos sensibles (ej: oncológicos, VIH) por teléfono."
+    },
+    {
+        cat: "PEC", 
+        label: "Normas de Conducta", 
+        name: "item_normas", 
+        tip: "• Mantiene el respeto y la calma en todo momento.\n• No grita, no usa sarcasmo ni lenguaje ofensivo.\n• No corta la llamada abruptamente."
+    },
+    {
+        cat: "PEC", 
+        label: "Abandono", 
+        name: "item_abandono", 
+        tip: "• No deja al paciente en silencio (mudo) por tiempos excesivos sin avisar.\n• Retoma el contacto para informar que sigue gestionando."
+    },
+    {
+        cat: "PEC", 
+        label: "Registro", 
+        name: "item_registro", 
+        tip: "• Deja una glosa/observación clara de lo realizado en el CRM.\n• El registro coincide con lo hablado en la llamada (Ej: 'Se agenda hora Dr. Soto 15hrs')."
+    },
+
+    // --- PENC (Evaluación No Crítica) ---
+    {
+        cat: "PENC", 
+        label: "Script Inicio/Cierre (5%)", 
+        name: "item_script", 
+        w: 5, 
+        tip: "• Saludo: Menciona bienvenida, nombre del Hospital y nombre propio.\n• Cierre: Despedida cordial invitando a contactar nuevamente."
+    },
+    {
+        cat: "PENC", 
+        label: "Cortesía y Trato (5%)", 
+        name: "item_cortesia", 
+        w: 5, 
+        tip: "• Trata de 'Usted' (evita tutear).\n• Utiliza palabras de cortesía: Por favor, Gracias, Disculpe.\n• Mantiene un tono de voz amable y servicial."
+    },
+    {
+        cat: "PENC", 
+        label: "Sondeo (15%)", 
+        name: "item_sondeo", 
+        w: 15, 
+        tip: "• Realiza preguntas clave para filtrar la necesidad (Especialidad, médico, horario).\n• Indaga si es primera vez o control antes de agendar."
+    },
+    {
+        cat: "PENC", 
+        label: "Entrega Información (20%)", 
+        name: "item_info", 
+        w: 20, 
+        tip: "• Entrega información correcta, completa y veraz.\n• Explica preparación de exámenes si corresponde.\n• Entrega indicaciones claras de ubicación y horarios."
+    },
+    {
+        cat: "PENC", 
+        label: "Manejo Tiempos (10%)", 
+        name: "item_tiempos", 
+        w: 10, 
+        tip: "• Retoma el contacto cada 45 segundos durante las esperas.\n• Justifica los tiempos de espera al paciente.\n• Gestiona la llamada de forma ágil."
+    },
+    {
+        cat: "PENC", 
+        label: "Aseguramiento (10%)", 
+        name: "item_aseguramiento", 
+        w: 10, 
+        tip: "• Valida el entendimiento del paciente.\n• Realiza la pregunta de cierre: '¿Le queda alguna otra duda?'."
+    },
+    {
+        cat: "PENC", 
+        label: "Personalización (5%)", 
+        name: "item_personalizacion", 
+        w: 5, 
+        tip: "• Utiliza el nombre del paciente durante la conversación para generar cercanía."
+    },
+    {
+        cat: "PENC", 
+        label: "Lenguaje (5%)", 
+        name: "item_lenguaje", 
+        w: 5, 
+        tip: "• Vocabulario formal, claro y adaptado al usuario.\n• Evita tecnicismos innecesarios y muletillas (ej: 'ehh', 'ya', 'cachai', 'al tiro').\n• Modulación clara."
+    },
+    {
+        cat: "PENC", 
+        label: "Empatía (10%)", 
+        name: "item_empatia", 
+        w: 10, 
+        tip: "• Conecta con la emoción del paciente.\n• Valida su preocupación ('Entiendo su molestia', 'Lamento la demora').\n• Practica la escucha activa sin interrumpir bruscamente."
+    },
+    {
+        cat: "PENC", 
+        label: "Tipificación (15%)", 
+        name: "item_tipificacion", 
+        w: 15, 
+        tip: "• Selecciona la categoría y subcategoría correcta en el CRM según el motivo real del llamado."
+    }
+];
 
         let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0;
 
@@ -611,3 +699,4 @@
     </script>
 </body>
 </html>
+
