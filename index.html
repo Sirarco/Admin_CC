@@ -10,6 +10,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: background-color 0.3s, color 0.3s; }
@@ -30,31 +33,35 @@
         }
         .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
 
-        /* DOCKS FLOTANTES (AGRANDADOS 25%) */
-        .dock-panel { 
-            transition: all 0.3s ease; 
-            backdrop-filter: blur(10px); 
-            /* Escala aumentada 1.15 (aprox 25% area visual percibida mas grande) */
-            transform: scale(1.15); 
-        }
-        
-        .dock-left { origin: top left; }
-        .dock-right { origin: top right; }
-
+        /* Docks */
+        .dock-panel { transition: all 0.3s ease; backdrop-filter: blur(10px); transform: scale(1.15); }
         .counter-row { @apply flex justify-between items-center border-b border-gray-200/50 pb-2 mb-2 last:border-0 last:mb-0 last:pb-0; }
 
-        /* MODO OSCURO */
-        body.dark-mode { background-color: #0f172a; color: #e2e8f0; }
-        body.dark-mode .bg-white { background-color: #1e293b; color: #e2e8f0; border-color: #334155; }
-        body.dark-mode .bg-slate-50 { background-color: #334155; color: #e2e8f0; border-color: #475569; }
-        body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #0f172a; color: #fff; border-color: #475569; }
-        body.dark-mode table thead { background-color: #0f172a; color: #94a3b8; }
-        body.dark-mode .shadow-md, body.dark-mode .shadow-lg { box-shadow: none; border: 1px solid #334155; }
+        /* Estilos Filtro Sticky */
+        .filter-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .filter-compact { 
+            padding-top: 0.5rem !important; 
+            padding-bottom: 0.5rem !important; 
+            background-color: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(5px); 
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-top: none;
+        }
+
+        /* Badges */
+        .info-badge { background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; cursor: help; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; }
+        .chart-container { position: relative; height: 200px; width: 100%; }
+        .feedback-done { background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-style: italic; display: inline-block; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Efecto Clickable */
+        .clickable-card { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .clickable-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); filter: brightness(0.98); }
+        .clickable-card:active { transform: translateY(0); }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
-        
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -62,68 +69,31 @@
 <body class="h-screen flex flex-col overflow-hidden text-slate-700 bg-slate-50 relative" id="mainBody">
 
     <div id="audioDock" class="dock-panel fixed left-8 top-24 w-72 bg-white/95 border border-slate-200 shadow-2xl rounded-xl z-[60] flex flex-col transform origin-top-left hidden">
-        <div class="bg-indigo-900 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move">
-            <span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-headphones mr-2"></i>Player QA</span>
-            <button onclick="toggleDock('audioDock','openAudioBtn')" class="hover:text-indigo-300"><i class="fas fa-minus"></i></button>
-        </div>
+        <div class="bg-indigo-900 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move"><span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-headphones mr-2"></i>Player QA</span><button onclick="toggleDock('audioDock','openAudioBtn')" class="hover:text-indigo-300"><i class="fas fa-minus"></i></button></div>
         <div class="p-4 bg-slate-50 rounded-b-xl border-t border-slate-100">
-            <div class="mb-3 text-center">
-                <audio id="mainAudioPlayer" controls class="w-full h-10 mb-2"></audio>
-                <div id="audioStatus" class="text-[10px] text-slate-400 font-bold uppercase mb-2">Esperando Link...</div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="setSpeed(1.0)" class="speed-btn bg-slate-200 text-slate-600 py-1.5 rounded text-xs font-bold hover:bg-indigo-100 hover:text-indigo-600 transition">1.0x</button>
-                <button onclick="setSpeed(1.5)" class="speed-btn bg-slate-200 text-slate-600 py-1.5 rounded text-xs font-bold hover:bg-indigo-100 hover:text-indigo-600 transition">1.5x</button>
-                <button onclick="setSpeed(2.0)" class="speed-btn bg-slate-200 text-slate-600 py-1.5 rounded text-xs font-bold hover:bg-indigo-100 hover:text-indigo-600 transition">2.0x</button>
-            </div>
+            <audio id="mainAudioPlayer" controls class="w-full h-10 mb-2"></audio>
+            <div class="grid grid-cols-3 gap-2"><button onclick="setSpeed(1.0)" class="bg-slate-200 text-slate-600 py-1 rounded text-xs font-bold">1.0x</button><button onclick="setSpeed(1.5)" class="bg-slate-200 text-slate-600 py-1 rounded text-xs font-bold">1.5x</button><button onclick="setSpeed(2.0)" class="bg-slate-200 text-slate-600 py-1 rounded text-xs font-bold">2.0x</button></div>
         </div>
     </div>
     <button id="openAudioBtn" onclick="toggleDock('audioDock','openAudioBtn')" class="fixed left-0 top-32 bg-indigo-900 text-white p-3 rounded-r-lg shadow-lg z-50 hover:bg-indigo-800 transition hidden"><i class="fas fa-chevron-right"></i></button>
 
-
     <div id="auditTools" class="dock-panel fixed right-8 top-24 w-72 bg-white/95 border border-slate-200 shadow-2xl rounded-xl z-[60] flex flex-col hidden transform origin-top-right">
-        <div id="dockHeader" class="bg-slate-800 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move">
-            <span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-tools mr-2"></i>Herramientas</span>
-            <button onclick="toggleDock('auditTools','openToolsBtn')" class="hover:text-emerald-400"><i class="fas fa-minus"></i></button>
-        </div>
-        
-        <div id="toolsBody" class="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+        <div class="bg-slate-800 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move"><span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-tools mr-2"></i>Herramientas</span><button onclick="toggleDock('auditTools','openToolsBtn')" class="hover:text-emerald-400"><i class="fas fa-minus"></i></button></div>
+        <div class="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
             <div class="bg-slate-50 p-3 rounded border border-slate-200">
-                <p class="text-[10px] text-slate-400 font-bold uppercase mb-2">Apariencia</p>
-                <div class="flex gap-2 mb-2">
-                    <button onclick="setTheme('slate')" class="w-6 h-6 rounded-full bg-slate-800 border-2 border-white shadow hover:scale-110 transition"></button>
-                    <button onclick="setTheme('blue')" class="w-6 h-6 rounded-full bg-blue-700 border-2 border-white shadow hover:scale-110 transition"></button>
-                    <button onclick="setTheme('emerald')" class="w-6 h-6 rounded-full bg-emerald-700 border-2 border-white shadow hover:scale-110 transition"></button>
-                    <button onclick="setTheme('rose')" class="w-6 h-6 rounded-full bg-rose-700 border-2 border-white shadow hover:scale-110 transition"></button>
-                </div>
-                <button onclick="toggleDarkMode()" class="w-full bg-gray-700 text-white text-[10px] py-1.5 rounded hover:bg-gray-600 transition font-bold"><i class="fas fa-moon mr-1"></i> Modo Oscuro</button>
-            </div>
-            
-            <div class="bg-slate-50 p-3 rounded border border-slate-200">
-                <p class="text-[10px] text-slate-400 font-bold uppercase mb-2">Pegar Fecha Sistema</p>
+                <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Pegar Fecha Sistema</p>
                 <div class="flex gap-1">
-                    <input type="text" id="pasteDateInput" class="w-full text-xs p-1.5 border rounded" placeholder="Ej: 2026-01-28 13:48:52">
-                    <button onclick="parseSystemDate()" class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700"><i class="fas fa-arrow-circle-right"></i></button>
+                    <input type="text" id="sysDateInput" class="w-full border rounded p-1 text-[10px]" placeholder="2026-02-12 12:40:47">
+                    <button onclick="parseSystemDate()" class="bg-blue-600 text-white px-2 rounded hover:bg-blue-700" title="Aplicar"><i class="fas fa-check"></i></button>
                 </div>
             </div>
-
-            <div class="bg-slate-50 p-3 rounded border border-slate-200 text-center">
-                <div class="text-3xl font-mono font-black text-slate-700 mb-2" id="timerDisplay">00:00</div>
-                <div class="flex justify-center gap-2">
-                    <button onclick="startTimer()" class="bg-emerald-500 text-white w-8 h-8 rounded hover:bg-emerald-600 flex items-center justify-center shadow"><i class="fas fa-play text-xs"></i></button>
-                    <button onclick="pauseTimer()" class="bg-amber-400 text-white w-8 h-8 rounded hover:bg-amber-500 flex items-center justify-center shadow"><i class="fas fa-pause text-xs"></i></button>
-                    <button onclick="resetTimer()" class="bg-slate-400 text-white w-8 h-8 rounded hover:bg-slate-500 flex items-center justify-center shadow"><i class="fas fa-undo text-xs"></i></button>
-                </div>
-            </div>
-
+            <div class="bg-slate-50 p-3 rounded border border-slate-200 text-center"><div class="text-3xl font-mono font-black text-slate-700 mb-2" id="timerDisplay">00:00</div><div class="flex justify-center gap-2"><button onclick="startTimer()" class="bg-emerald-500 text-white w-8 h-8 rounded"><i class="fas fa-play text-xs"></i></button><button onclick="pauseTimer()" class="bg-amber-400 text-white w-8 h-8 rounded"><i class="fas fa-pause text-xs"></i></button><button onclick="resetTimer()" class="bg-slate-400 text-white w-8 h-8 rounded"><i class="fas fa-undo text-xs"></i></button></div></div>
             <div class="bg-slate-50 p-3 rounded border border-slate-200">
-                <div class="counter-row"><p class="text-[10px] font-bold uppercase">Muletillas</p><div class="flex items-center gap-2"><span class="font-black text-indigo-600 w-6 text-center text-sm" id="cntMuletillas">0</span><button onclick="countUp('cntMuletillas')" class="bg-indigo-100 text-indigo-600 w-6 h-6 rounded font-bold text-xs">+</button><button onclick="countReset('cntMuletillas')" class="text-slate-300 hover:text-red-400"><i class="fas fa-times text-xs"></i></button></div></div>
-                <div class="counter-row"><p class="text-[10px] font-bold uppercase">Personaliz.</p><div class="flex items-center gap-2"><span class="font-black text-emerald-600 w-6 text-center text-sm" id="cntPerso">0</span><button onclick="countUp('cntPerso')" class="bg-emerald-100 text-emerald-600 w-6 h-6 rounded font-bold text-xs">+</button><button onclick="countReset('cntPerso')" class="text-slate-300 hover:text-red-400"><i class="fas fa-times text-xs"></i></button></div></div>
-                <div class="counter-row"><p class="text-[10px] font-bold uppercase">Otros</p><div class="flex items-center gap-2"><span class="font-black text-slate-600 w-6 text-center text-sm" id="cntOtros">0</span><button onclick="countUp('cntOtros')" class="bg-slate-200 text-slate-600 w-6 h-6 rounded font-bold text-xs">+</button><button onclick="countReset('cntOtros')" class="text-slate-300 hover:text-red-400"><i class="fas fa-times text-xs"></i></button></div></div>
+                <div class="counter-row"><p class="text-[10px] font-bold uppercase">Muletillas</p><div class="flex items-center gap-2"><span class="font-black text-indigo-600 w-6 text-center text-sm" id="cntMuletillas">0</span><button onclick="countUp('cntMuletillas')" class="bg-indigo-100 text-indigo-600 w-6 h-6 rounded font-bold text-xs">+</button></div></div>
+                <div class="counter-row"><p class="text-[10px] font-bold uppercase">Personaliz.</p><div class="flex items-center gap-2"><span class="font-black text-emerald-600 w-6 text-center text-sm" id="cntPerso">0</span><button onclick="countUp('cntPerso')" class="bg-emerald-100 text-emerald-600 w-6 h-6 rounded font-bold text-xs">+</button></div></div>
             </div>
-
-            <div class="bg-slate-50 p-3 rounded border border-slate-200">
-                <div class="flex justify-between items-center mb-2"><p class="text-[10px] text-slate-400 font-bold uppercase">Notas</p><button onclick="copyNotes()" class="text-[10px] text-blue-600 hover:underline"><i class="fas fa-copy"></i></button></div>
+            <div>
+                <div class="flex justify-between mb-1"><span class="text-[10px] font-bold text-slate-400 uppercase">Notas</span><div class="flex gap-2"><button onclick="copyNotes()" class="text-[10px] text-blue-500 hover:underline">Copiar</button><button onclick="clearNotes()" class="text-[10px] text-red-400 hover:underline">Limpiar</button></div></div>
                 <textarea id="tempNotes" class="w-full h-24 text-xs p-2 border border-slate-300 rounded resize-none bg-white" placeholder="Escribe..."></textarea>
             </div>
         </div>
@@ -132,13 +102,8 @@
 
     <nav id="mainNav" class="bg-slate-900 text-white px-6 py-2 flex justify-between items-center shadow-md shrink-0 z-50 transition-colors duration-300">
         <div class="flex items-center gap-3">
-            <div id="logoIcon" class="bg-white/20 w-8 h-8 rounded flex items-center justify-center text-white shadow-inner">
-                <i class="fas fa-shield-alt"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-sm tracking-wide leading-none">Admin QA</h1>
-                <p class="text-[9px] opacity-70 uppercase tracking-widest">Panel de Control</p>
-            </div>
+            <div id="logoIcon" class="bg-white/20 w-8 h-8 rounded flex items-center justify-center text-white shadow-inner"><i class="fas fa-shield-alt"></i></div>
+            <div><h1 class="font-bold text-sm tracking-wide leading-none">Admin QA</h1><p class="text-[9px] opacity-70 uppercase tracking-widest">Panel de Control</p></div>
         </div>
         <div class="flex gap-2 text-xs bg-black/20 p-1 rounded-lg">
             <button onclick="cambiarTab('tabIngreso')" id="navBtnIngreso" class="nav-btn active-tab px-4 py-1.5 rounded text-white">Auditar</button>
@@ -153,83 +118,52 @@
                 <h2 class="font-bold text-gray-700 text-sm"><i class="fas fa-file-contract mr-2"></i>Nueva Auditoría</h2>
                 <span class="text-[10px] bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-500 uppercase font-bold">Admin</span>
             </div>
-
             <form id="auditForm" class="p-4 space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50/50 p-3 rounded border border-slate-100">
-                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Fecha Llamada</label><input type="date" id="fechaLlamada" name="fecha_llamada" class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none" required onchange="calcSemana()"></div>
-                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Hora</label><input type="time" id="horaLlamada" name="hora_llamada" class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none" required></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Fecha Llamada</label><input type="date" id="fechaLlamada" name="fecha_llamada" class="w-full border border-slate-300 rounded p-1.5 text-xs font-bold outline-none" required onchange="calcSemana()"></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Hora</label><input type="time" id="horaLlamada" name="hora_llamada" class="w-full border border-slate-300 rounded p-1.5 text-xs font-bold outline-none" required></div>
                     <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Semana</label><input type="text" id="inputSemana" name="semana" class="w-full bg-slate-100 border border-slate-300 rounded p-1.5 text-xs text-slate-500 cursor-not-allowed" readonly></div>
                     <div><label class="block text-[10px] font-bold text-blue-500 uppercase mb-0.5">RUT Paciente</label><input type="text" name="rut_paciente" class="w-full border border-slate-300 rounded p-1.5 text-xs font-bold" placeholder="12.345.678-9"></div>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div class="md:col-span-2 relative">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ejecutivo</label>
-                        <input type="text" id="inputNombre" name="nombre" list="lista-ejecutivos" class="w-full pl-2 border border-slate-300 rounded p-1.5 text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none uppercase" placeholder="Buscar..." autocomplete="off">
-                        <datalist id="lista-ejecutivos"></datalist>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Audio URL</label>
-                        <div class="flex gap-1">
-                            <input type="url" id="inputAudioUrl" name="audio_url" class="w-full border border-slate-300 rounded p-1.5 text-xs text-blue-600 font-mono" placeholder="https://...">
-                            <button type="button" onclick="loadAudioFromForm()" class="bg-indigo-600 text-white px-3 rounded hover:bg-indigo-700 transition" title="Cargar en Player"><i class="fas fa-play text-xs"></i></button>
-                        </div>
-                    </div>
+                    <div class="md:col-span-2 relative"><label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ejecutivo</label><input type="text" id="inputNombre" name="nombre" list="lista-ejecutivos" class="w-full pl-2 border border-slate-300 rounded p-1.5 text-xs font-bold outline-none uppercase" placeholder="Buscar..." autocomplete="off"><datalist id="lista-ejecutivos"></datalist></div>
+                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Audio URL</label><div class="flex gap-1"><input type="url" id="inputAudioUrl" name="audio_url" class="w-full border border-slate-300 rounded p-1.5 text-xs text-blue-600 font-mono" placeholder="https://..."><button type="button" onclick="loadAudioFromForm()" class="bg-indigo-600 text-white px-3 rounded hover:bg-indigo-700 transition"><i class="fas fa-play text-xs"></i></button></div></div>
                 </div>
-                
                 <div class="flex gap-4 bg-slate-50 p-2 rounded border border-slate-100 text-[10px]">
                     <div><span class="font-bold text-slate-400 uppercase mr-1">Cód:</span><input id="inputCodigo" name="codigo" class="bg-transparent font-bold w-16" readonly></div>
                     <div><span class="font-bold text-slate-400 uppercase mr-1">Sup:</span><input id="inputSup" name="supervisor" class="bg-transparent font-bold w-32" readonly></div>
                     <div><span class="font-bold text-slate-400 uppercase mr-1">Serv:</span><input id="inputServ" name="servicio" class="bg-transparent font-bold w-32" readonly></div>
                 </div>
-
                 <div class="hidden"><input type="date" id="fechaAuditoria" name="fecha_auditoria"><input type="text" name="auditor_real" value="Admin Master"><input type="text" name="rut" value="N/A"></div>
-
                 <div class="border border-slate-200 rounded overflow-hidden">
                     <table class="w-full text-[11px]">
-                        <thead class="bg-slate-800 text-white uppercase tracking-wider text-[10px]">
-                            <tr><th class="p-2 text-left">Indicador</th><th class="p-2 text-center w-20">Cumple</th><th class="p-2 text-center w-20">Estado</th><th class="p-2 text-left">Observación</th></tr>
-                        </thead>
+                        <thead class="bg-slate-800 text-white uppercase tracking-wider text-[10px]"><tr><th class="p-2 text-left">Indicador</th><th class="p-2 text-center w-20">Cumple</th><th class="p-2 text-center w-20">Estado</th><th class="p-2 text-left">Observación</th></tr></thead>
                         <tbody id="tablaItems" class="divide-y divide-slate-100 bg-white"></tbody>
-                        <tfoot class="bg-slate-50 border-t border-slate-200">
-                            <tr><td colspan="2" class="p-3 text-right font-bold text-slate-500">NOTA FINAL:</td><td colspan="2" class="p-3 text-left"><div id="totalScore" class="font-black text-2xl text-slate-300 transition-all duration-300">0%</div></td></tr>
-                        </tfoot>
+                        <tfoot class="bg-slate-50 border-t border-slate-200"><tr><td colspan="2" class="p-3 text-right font-bold text-slate-500">NOTA FINAL:</td><td colspan="2" class="p-3 text-left"><div id="totalScore" class="font-black text-2xl text-slate-300 transition-all duration-300">0%</div></td></tr></tfoot>
                     </table>
                 </div>
                 <input type="hidden" name="nota_final" id="notaFinalHidden" value="0%">
-                
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Comentarios</label>
-                    <textarea name="comentario" id="mainComments" class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none h-16 resize-none" placeholder="Observaciones generales..."></textarea>
-                </div>
-
+                <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Comentarios</label><textarea name="comentario" id="mainComments" class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none h-16 resize-none" placeholder="Observaciones generales..."></textarea></div>
                 <button type="submit" id="btnGuardar" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded shadow transition flex justify-center items-center gap-2 text-xs tracking-widest uppercase"><i class="fas fa-save text-emerald-400"></i> Guardar Auditoría</button>
             </form>
-            
-            <div class="mt-8 mb-4 text-center opacity-30 hover:opacity-100 transition-opacity duration-500">
-                <p class="text-[9px] font-bold uppercase tracking-widest">Desarrollado por <span class="text-indigo-500">Tu Nombre</span></p>
-                <a href="mailto:tuemail@ejemplo.com" class="text-[8px] hover:text-indigo-500">Soporte</a>
-            </div>
         </div>
     </div>
 
-    <div id="tabDashboard" class="hidden flex-1 overflow-y-auto p-6 bg-slate-100">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 sticky top-0 z-40">
-            <div class="flex flex-wrap items-end gap-3">
-                <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Periodo</label><select id="fMes" class="w-full border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">📅 Histórico</option></select></div>
-                <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Supervisor</label><select id="fSup" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">Todos</option></select></div>
-                <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Servicio</label><select id="fServ" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">Todos</option></select></div>
-                <div class="flex-[2] min-w-[180px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Ejecutivo</label><input type="text" id="fSearch" list="lista-filtro-dash" class="w-full pl-3 border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none uppercase" placeholder="Buscar..." oninput="aplicarFiltros()"><datalist id="lista-filtro-dash"></datalist></div>
-                <div class="flex items-center gap-2">
-                    <button onclick="loadData()" class="px-3 py-2 bg-blue-100 text-blue-600 rounded text-xs font-bold border border-blue-200 hover:bg-blue-200 transition" title="Recargar"><i class="fas fa-sync-alt"></i></button>
-                    <button onclick="resetFiltros()" class="px-3 py-2 bg-slate-100 text-slate-500 rounded text-xs font-bold border border-slate-200 hover:bg-slate-200"><i class="fas fa-eraser"></i></button>
-                    <button onclick="exportarExcel()" class="px-3 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 shadow flex items-center gap-2"><i class="fas fa-file-excel"></i> Excel</button>
-                </div>
-                <div id="loadingIndicator" class="loader ml-2 hidden"></div>
+    <div id="tabDashboard" class="hidden flex-1 overflow-y-auto p-6 bg-slate-100" onscroll="handleScroll()">
+        <div id="stickyFilter" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end sticky top-0 z-40 filter-transition">
+            <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Periodo</label><select id="fMes" class="w-full border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">📅 Histórico</option></select></div>
+            <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Supervisor</label><select id="fSup" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">Todos</option></select></div>
+            <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Servicio</label><select id="fServ" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">Todos</option></select></div>
+            <div class="flex-[2] min-w-[180px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Ejecutivo</label><input type="text" id="fSearch" list="lista-filtro-dash" class="w-full pl-3 border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none uppercase" placeholder="Buscar..." oninput="aplicarFiltros()"><datalist id="lista-filtro-dash"></datalist></div>
+            <div class="flex items-center gap-2">
+                <button onclick="loadData()" class="px-3 py-2 bg-blue-100 text-blue-600 rounded text-xs font-bold border border-blue-200 hover:bg-blue-200 transition"><i class="fas fa-sync-alt"></i></button>
+                <button onclick="resetFiltros()" class="px-3 py-2 bg-slate-100 text-slate-500 rounded text-xs font-bold border border-slate-200 hover:bg-slate-200"><i class="fas fa-eraser"></i></button>
+                <button onclick="exportarExcel()" class="px-3 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 shadow flex items-center gap-2"><i class="fas fa-file-excel"></i> Excel</button>
             </div>
+            <div id="loadingIndicator" class="loader ml-2 hidden"></div>
         </div>
 
-        <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest">Rendimiento por Líder</h3>
+        <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest mt-6">Rendimiento por Líder</h3>
         <div id="supervisorCards" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"><div class="bg-slate-200 p-4 rounded-xl animate-pulse h-32"></div></div>
 
         <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest">Métricas Globales</h3>
@@ -237,10 +171,49 @@
             <div class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-slate-500"><p class="text-[9px] text-slate-400 font-bold uppercase">Auditorías</p><p class="text-xl font-black text-slate-700" id="kpiTotal">-</p></div>
             <div class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-emerald-500"><p class="text-[9px] text-emerald-600 font-bold uppercase truncate">Prom. PENC</p><p class="text-xl font-black text-emerald-600" id="kpiPenc">-</p></div>
             <div class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-indigo-600"><p class="text-[9px] text-indigo-600 font-bold uppercase truncate">Prom. General</p><p class="text-xl font-black text-indigo-700" id="kpiGeneral">-</p></div>
-            <div class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-red-600"><p class="text-[9px] text-red-600 font-bold uppercase">Cant. PEC</p><p class="text-xl font-black text-red-600" id="kpiCountPec">-</p></div>
+            <div onclick="filtrarSoloPEC()" class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-red-600 clickable-card relative group">
+                <p class="text-[9px] text-red-600 font-bold uppercase">Cant. PEC</p>
+                <p class="text-xl font-black text-red-600" id="kpiCountPec">-</p>
+                <span class="absolute top-1 right-1 text-[8px] bg-red-100 text-red-600 px-1 rounded opacity-0 group-hover:opacity-100 transition">Ver detalle</span>
+            </div>
             <div class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-orange-400"><p class="text-[9px] text-orange-500 font-bold uppercase">Cant. PENC</p><p class="text-xl font-black text-orange-500" id="kpiCountPenc">-</p></div>
             <div class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-purple-500"><p class="text-[9px] text-purple-500 font-bold uppercase">Feedback</p><p class="text-xl font-black text-purple-600" id="kpiFeedback">-</p></div>
             <div class="bg-white p-3 rounded-lg shadow-sm border-b-4 border-pink-500"><p class="text-[9px] text-pink-500 font-bold uppercase">Apelaciones</p><p class="text-xl font-black text-pink-600" id="kpiApel">-</p></div>
+        </div>
+
+        <div class="bg-slate-100 p-4 rounded-2xl border border-slate-200 mb-6">
+            <h3 class="text-xs font-bold text-indigo-900 uppercase mb-4 flex items-center"><i class="fas fa-chart-line mr-2"></i>Análisis Estratégico</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm h-80 flex flex-col">
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">1. Evolución Semanal (Tendencia)</h4>
+                    <div class="flex-1 relative w-full h-full"><canvas id="chartEvolucion"></canvas></div>
+                    <p class="text-[9px] text-center text-slate-400 italic mt-2">Muestra si la nota promedio sube o baja semana tras semana.</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm h-80 flex flex-col">
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">2. Distribución de Notas (Salud)</h4>
+                    <div class="flex-1 relative w-full h-full"><canvas id="chartDistribucion"></canvas></div>
+                    <p class="text-[9px] text-center text-slate-400 italic mt-2">Agrupa al equipo en niveles: Crítico, Bajo, Meta y Excelencia.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm h-72 flex flex-col">
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">3. Top Quiebres PEC</h4>
+                    <div class="flex-1 relative w-full h-full"><canvas id="chartPecDona"></canvas></div>
+                    <p class="text-[9px] text-center text-slate-400 italic mt-2">Errores críticos más frecuentes.</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm h-72 flex flex-col">
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">4. Calidad por Servicio</h4>
+                    <div class="flex-1 relative w-full h-full"><canvas id="chartServicios"></canvas></div>
+                    <p class="text-[9px] text-center text-slate-400 italic mt-2">Comparativa de nota por cola.</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm h-72 flex flex-col">
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-2">5. Estado Feedback</h4>
+                    <div class="flex-1 relative w-full h-full"><canvas id="chartFeedbackStack"></canvas></div>
+                    <p class="text-[9px] text-center text-slate-400 italic mt-2">Pendiente (Rojo) vs Realizado (Verde).</p>
+                </div>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -250,12 +223,15 @@
             </div>
             <div class="lg:col-span-3 space-y-6">
                 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center"><h3 class="font-bold text-slate-700 text-xs"><i class="fas fa-users mr-2 text-slate-400"></i>Cobertura de Equipo</h3><span id="lblPeriodoCobertura" class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase">Todo</span></div>
-                    <div class="overflow-auto max-h-56"><table class="w-full text-xs text-left"><thead class="bg-slate-50 text-slate-500 uppercase font-bold sticky top-0 text-[10px]"><tr><th class="p-2 cursor-pointer" onclick="sortExecTable('NOMBRE')">Nombre</th><th class="p-2">Supervisor</th><th class="p-2">Servicio</th><th class="p-2 text-center cursor-pointer" onclick="sortExecTable('TOTAL')">Total Auditorías</th></tr></thead><tbody id="execSummaryTable" class="divide-y divide-slate-100"></tbody></table></div>
+                    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center"><h3 class="font-bold text-slate-700 text-xs"><i class="fas fa-users mr-2 text-slate-400"></i>Auditorías por Ejecutivo</h3><span id="lblPeriodoCobertura" class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase">Todo</span></div>
+                    <div class="p-4 max-h-56 overflow-y-auto"><div id="teamCardsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"></div></div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
-                    <div class="px-4 py-3 border-b border-slate-100"><h3 class="font-bold text-slate-700 text-xs"><i class="fas fa-list mr-2 text-slate-400"></i>Detalle de Evaluaciones</h3></div>
-                    <div class="overflow-auto flex-1"><table class="w-full text-xs text-left"><thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200 sticky top-0 z-10 text-[10px]"><tr><th class="p-2 cursor-pointer" onclick="sortTable('CODIGO')">Cód</th><th class="p-2 cursor-pointer" onclick="sortTable('NOMBRE')">Ejecutivo</th><th class="p-2">Sup</th><th class="p-2 cursor-pointer" onclick="sortTable('FECHA')">Fecha</th><th class="p-2">Sem</th><th class="p-2">Serv</th><th class="p-2 text-center cursor-pointer" onclick="sortTable('NOTA')">Nota</th><th class="p-2 text-center">Feedback</th><th class="p-2 text-center">Ver</th></tr></thead><tbody id="mainTable" class="divide-y divide-slate-100"></tbody></table></div>
+                <div id="tablaDetalleContenedor" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+                    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700 text-xs"><i class="fas fa-list mr-2 text-slate-400"></i>Detalle de Evaluaciones</h3>
+                        <button onclick="resetFiltroTabla()" id="btnResetTabla" class="hidden text-[10px] text-blue-500 hover:underline">Ver todo</button>
+                    </div>
+                    <div class="overflow-auto flex-1"><table class="w-full text-xs text-left"><thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200 sticky top-0 z-10 text-[10px]"><tr><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('CODIGO')">Cód ↕</th><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('NOMBRE')">Ejecutivo ↕</th><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('SUPERVISOR')">Sup ↕</th><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('FECHA')">Fecha ↕</th><th class="p-2">Sem</th><th class="p-2">Serv</th><th class="p-2 text-center cursor-pointer hover:bg-slate-200" onclick="sortTable('NOTA')">Nota ↕</th><th class="p-2 text-center">Feed</th><th class="p-2 text-center">Ver</th></tr></thead><tbody id="mainTable" class="divide-y divide-slate-100"></tbody></table></div>
                 </div>
             </div>
         </div>
@@ -269,7 +245,8 @@
     <div id="tabApelaciones" class="hidden flex-1 overflow-y-auto p-6 bg-slate-100">
         <div class="max-w-5xl mx-auto"><h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center"><i class="fas fa-gavel text-pink-500 mr-2"></i> Gestión de Apelaciones</h2><div id="contApelaciones" class="grid grid-cols-1 gap-4"><p class="text-center text-slate-400 py-10 italic">Cargando...</p></div></div>
     </div>
-<script>
+
+    <script>
         // ================= CONFIGURACIÓN =================
         const API_URL = "https://script.google.com/macros/s/AKfycbzGtnjzJeHSePkZ_0k_bt1hZcrYVjxIcV4_dekezLO815n7YPUlmCbt5QmvmwYcqyYheA/exec"; 
 
@@ -302,132 +279,34 @@
             {nombre:"Marco Lara Vera", codigo:"S0226", sup:"Aracely Torres", serv:"HLF"}
         ];
 
-        // DICCIONARIO MAESTRO DE INDICADORES (Traducción Excel -> Nombre Pauta)
         const INDICADORES_MAP = {
-            "SEG_VALIDACION": "Validación Identidad",
-            "SEG_CONFIDENCIALIDAD": "Confidencialidad",
-            "COND_NORMAS": "Normas de Conducta",
-            "OP_ABANDONO": "Abandono",
-            "SIST_REGISTRO": "Registro",
-            "PROT_SCRIPT": "Script Inicio/Cierre",
-            "PROT_CORTESIA": "Cortesía y Trato",
-            "GEST_SONDEO": "Sondeo",
-            "GEST_INFORMACION": "Entrega Información",
-            "GEST_TIEMPOS": "Manejo Tiempos",
-            "GEST_ASEGURAMIENTO": "Aseguramiento",
-            "HAB_PERSONALIZACION": "Personalización",
-            "HAB_LENGUAJE": "Lenguaje",
-            "HAB_EMPATIA": "Empatía",
-            "SIST_TIPIFICACION": "Tipificación"
+            "SEG_VALIDACION": "Validación Identidad", "SEG_CONFIDENCIALIDAD": "Confidencialidad", "COND_NORMAS": "Normas de Conducta", "OP_ABANDONO": "Abandono", "SIST_REGISTRO": "Registro",
+            "PROT_SCRIPT": "Script Inicio/Cierre", "PROT_CORTESIA": "Cortesía y Trato", "GEST_SONDEO": "Sondeo", "GEST_INFORMACION": "Entrega Información", "GEST_TIEMPOS": "Manejo Tiempos", "GEST_ASEGURAMIENTO": "Aseguramiento",
+            "HAB_PERSONALIZACION": "Personalización", "HAB_LENGUAJE": "Lenguaje", "HAB_EMPATIA": "Empatía", "SIST_TIPIFICACION": "Tipificación"
         };
 
         const pautaItems = [
-    // --- PEC (Errores Críticos) ---
-    {
-        cat: "PEC", 
-        label: "Validación Identidad", 
-        name: "item_validacion", 
-        tip: "• Solicita RUT y Nombre completo del paciente.\n• Si es un tercero: Valida datos del paciente Y solicita nombre/RUT/parentesco del tercero.\n• Si el paciente se niega a dar el RUT, explica que por normativa no puede entregar información sensible."
-    },
-    {
-        cat: "PEC", 
-        label: "Confidencialidad", 
-        name: "item_confidencialidad", 
-        tip: "• Se limita a dar información administrativa (horas, ubicación).\n• Si debe dar info sensible, valida estrictamente que habla con el titular.\n• NO informa diagnósticos sensibles (ej: oncológicos, VIH) por teléfono."
-    },
-    {
-        cat: "PEC", 
-        label: "Normas de Conducta", 
-        name: "item_normas", 
-        tip: "• Mantiene el respeto y la calma en todo momento.\n• No grita, no usa sarcasmo ni lenguaje ofensivo.\n• No corta la llamada abruptamente."
-    },
-    {
-        cat: "PEC", 
-        label: "Abandono", 
-        name: "item_abandono", 
-        tip: "• No deja al paciente en silencio (mudo) por tiempos excesivos sin avisar.\n• Retoma el contacto para informar que sigue gestionando."
-    },
-    {
-        cat: "PEC", 
-        label: "Registro", 
-        name: "item_registro", 
-        tip: "• Deja una glosa/observación clara de lo realizado en el CRM.\n• El registro coincide con lo hablado en la llamada (Ej: 'Se agenda hora Dr. Soto 15hrs')."
-    },
-
-    // --- PENC (Evaluación No Crítica) ---
-    {
-        cat: "PENC", 
-        label: "Script Inicio/Cierre (5%)", 
-        name: "item_script", 
-        w: 5, 
-        tip: "• Saludo: Menciona bienvenida, nombre del Hospital y nombre propio.\n• Cierre: Despedida cordial invitando a contactar nuevamente."
-    },
-    {
-        cat: "PENC", 
-        label: "Cortesía y Trato (5%)", 
-        name: "item_cortesia", 
-        w: 5, 
-        tip: "• Trata de 'Usted' (evita tutear).\n• Utiliza palabras de cortesía: Por favor, Gracias, Disculpe.\n• Mantiene un tono de voz amable y servicial."
-    },
-    {
-        cat: "PENC", 
-        label: "Sondeo (15%)", 
-        name: "item_sondeo", 
-        w: 15, 
-        tip: "• Realiza preguntas clave para filtrar la necesidad (Especialidad, médico, horario).\n• Indaga si es primera vez o control antes de agendar."
-    },
-    {
-        cat: "PENC", 
-        label: "Entrega Información (20%)", 
-        name: "item_info", 
-        w: 20, 
-        tip: "• Entrega información correcta, completa y veraz.\n• Explica preparación de exámenes si corresponde.\n• Entrega indicaciones claras de ubicación y horarios."
-    },
-    {
-        cat: "PENC", 
-        label: "Manejo Tiempos (10%)", 
-        name: "item_tiempos", 
-        w: 10, 
-        tip: "• Retoma el contacto cada 45 segundos durante las esperas.\n• Justifica los tiempos de espera al paciente.\n• Gestiona la llamada de forma ágil."
-    },
-    {
-        cat: "PENC", 
-        label: "Aseguramiento (10%)", 
-        name: "item_aseguramiento", 
-        w: 10, 
-        tip: "• Valida el entendimiento del paciente.\n• Realiza la pregunta de cierre: '¿Le queda alguna otra duda?'."
-    },
-    {
-        cat: "PENC", 
-        label: "Personalización (5%)", 
-        name: "item_personalizacion", 
-        w: 5, 
-        tip: "• Utiliza el nombre del paciente durante la conversación para generar cercanía."
-    },
-    {
-        cat: "PENC", 
-        label: "Lenguaje (5%)", 
-        name: "item_lenguaje", 
-        w: 5, 
-        tip: "• Vocabulario formal, claro y adaptado al usuario.\n• Evita tecnicismos innecesarios y muletillas (ej: 'ehh', 'ya', 'cachai', 'al tiro').\n• Modulación clara."
-    },
-    {
-        cat: "PENC", 
-        label: "Empatía (10%)", 
-        name: "item_empatia", 
-        w: 10, 
-        tip: "• Conecta con la emoción del paciente.\n• Valida su preocupación ('Entiendo su molestia', 'Lamento la demora').\n• Practica la escucha activa sin interrumpir bruscamente."
-    },
-    {
-        cat: "PENC", 
-        label: "Tipificación (15%)", 
-        name: "item_tipificacion", 
-        w: 15, 
-        tip: "• Selecciona la categoría y subcategoría correcta en el CRM según el motivo real del llamado."
-    }
-];
+            {cat:"PEC", label:"Validación Identidad", name:"item_validacion", tip:"Solicita RUT y Nombre completo."},
+            {cat:"PEC", label:"Confidencialidad", name:"item_confidencialidad", tip:"Resguardo de datos sensibles."},
+            {cat:"PEC", label:"Normas de Conducta", name:"item_normas", tip:"No grita, no corta llamada."},
+            {cat:"PEC", label:"Abandono", name:"item_abandono", tip:"No deja en mudo excesivo."},
+            {cat:"PEC", label:"Registro", name:"item_registro", tip:"Deja nota o glosa."},
+            {cat:"PENC", label:"Script Inicio/Cierre (5%)", name:"item_script", w:5, tip:"Saludo institucional y despedida."},
+            {cat:"PENC", label:"Cortesía y Trato (5%)", name:"item_cortesia", w:5, tip:"Usa 'Usted', por favor, gracias."},
+            {cat:"PENC", label:"Sondeo (15%)", name:"item_sondeo", w:15, tip:"Preguntas correctas."},
+            {cat:"PENC", label:"Entrega Información (20%)", name:"item_info", w:20, tip:"Info correcta y completa."},
+            {cat:"PENC", label:"Manejo Tiempos (10%)", name:"item_tiempos", w:10, tip:"Retoma cada 45 segs."},
+            {cat:"PENC", label:"Aseguramiento (10%)", name:"item_aseguramiento", w:10, tip:"Valida entendimiento."},
+            {cat:"PENC", label:"Personalización (5%)", name:"item_personalizacion", w:5, tip:"Usa el nombre del paciente."},
+            {cat:"PENC", label:"Lenguaje (5%)", name:"item_lenguaje", w:5, tip:"Modulación clara."},
+            {cat:"PENC", label:"Empatía (10%)", name:"item_empatia", w:10, tip:"Conecta emocionalmente."},
+            {cat:"PENC", label:"Tipificación (15%)", name:"item_tipificacion", w:15, tip:"Motivo correcto en CRM."}
+        ];
 
         let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0;
+        let chartInstances = {}; 
+        let currentSortCol = 'FECHA', currentSortAsc = false;
+        let activeTableFilter = null; // Para guardar si hay filtro temporal por click en tarjeta
 
         window.onload = () => { 
             renderFormTable(); 
@@ -435,11 +314,10 @@
             document.getElementById('auditTools').classList.remove('hidden'); 
             document.getElementById('audioDock').classList.remove('hidden'); 
             
-            // ACTUALIZACIÓN FOOTER CON MAILTO
             const footer = document.querySelector('footer p');
             if(footer) footer.innerHTML = `Desarrollado por <a href="mailto:marco.lara.vera@gmail.com" class="text-indigo-400 hover:text-indigo-300 hover:underline transition">Marco Lara</a> • Iniciativa de innovación 2026`;
             
-            cambiarTab('tabDashboard'); 
+            cambiarTab('tabIngreso'); 
         };
 
         function initFormLogic() {
@@ -459,15 +337,26 @@
         function pauseTimer() { clearInterval(timerInterval); timerInterval=null; }
         function resetTimer() { pauseTimer(); seconds=0; document.getElementById('timerDisplay').innerText="00:00"; }
         function countUp(id) { const e=document.getElementById(id); e.innerText=parseInt(e.innerText)+1; }
-        function countReset(id) { document.getElementById(id).innerText="0"; }
         function copyNotes() { const t=document.getElementById('tempNotes'); navigator.clipboard.writeText(t.value); }
+        function clearNotes() { document.getElementById('tempNotes').value = ""; }
         function calcSemana() { const f=document.getElementById('fechaLlamada').value; if(f) document.getElementById('inputSemana').value="Semana "+Math.ceil(new Date(f).getDate()/7); }
+        
+        function parseSystemDate() {
+            const raw = document.getElementById('sysDateInput').value;
+            if(!raw) return;
+            const parts = raw.split(' ');
+            if(parts.length >= 2) {
+                document.getElementById('fechaLlamada').value = parts[0];
+                document.getElementById('horaLlamada').value = parts[1];
+                calcSemana();
+            }
+        }
 
         function renderFormTable() {
             const tb=document.getElementById('tablaItems'); tb.innerHTML=""; let lc="";
             pautaItems.forEach(i => {
                 if(i.cat!==lc){tb.innerHTML+=`<tr><td colspan="4" class="p-2 font-bold text-center ${i.cat==='PEC'?'text-red-600 bg-red-50':'text-blue-600 bg-blue-50'} border-y text-[10px] uppercase">${i.cat}</td></tr>`; lc=i.cat;}
-                tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="p-2 relative"><div class="tooltip-container"><span class="font-bold text-slate-700 text-[10px] border-b border-dotted border-slate-400 cursor-help">${i.label}</span><span class="tooltip-text">${i.tip}</span></div></td><td class="p-2 text-center"><select name="${i.name}" class="w-full border rounded p-1 text-[10px] font-bold ${i.cat==='PEC'?'critical':'weighted'}" data-w="${i.w||0}" onchange="updateRow(this)"><option value="">-</option><option value="SI">SI</option><option value="NO">NO</option></select></td><td class="p-2 text-center status-cell">-</td><td class="p-2"><input class="desc-input hidden w-full border border-red-300 rounded p-1 text-[10px]" placeholder="Detalle..."></td></tr>`;
+                tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="p-2 relative"><div class="tooltip-container"><span class="font-bold text-slate-700 text-[10px] border-b border-dotted border-slate-400 cursor-help">${i.label}</span><span class="tooltip-text">${i.tip}</span></div></td><td class="p-2 text-center"><select name="${i.name}" class="w-full border rounded p-1 text-[10px] font-bold ${i.cat==='PEC'?'critical':'weighted'}" data-w="${i.w||0}" onchange="updateRow(this)"><option value="SI" selected>SI</option><option value="NO">NO</option></select></td><td class="p-2 text-center status-cell"><span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span></td><td class="p-2"><input class="desc-input hidden w-full border border-red-300 rounded p-1 text-[10px]" placeholder="Detalle..."></td></tr>`;
             });
         }
         function updateRow(s) { const r=s.closest('tr'), sc=r.querySelector('.status-cell'), i=r.querySelector('.desc-input'); i.classList.add('hidden'); if(s.value==='SI') sc.innerHTML='<span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span>'; else if(s.value==='NO') { sc.innerHTML='<span class="text-red-600 font-bold bg-red-50 px-1 rounded text-[9px]">NO</span>'; i.classList.remove('hidden'); i.focus(); } else sc.innerHTML='-'; calcScore(); }
@@ -520,7 +409,13 @@
             mS.innerHTML='<option value="TODOS">📅 Histórico</option>'; sP.innerHTML='<option value="TODOS">Todos</option>'; sV.innerHTML='<option value="TODOS">Todos</option>';
             const ms=new Set(), sp=new Set(), sv=new Set();
             data.forEach(d=>{ let f=d.FECHA_LLAMADA||d.FECHA; if(f&&f.length>=7)ms.add(f.substring(0,7)); sp.add(d.SUPERVISOR); sv.add(d.SERVICIO); });
-            Array.from(ms).sort().reverse().forEach(m=>{ mS.add(new Option(`📅 ${m}`,m)); const sems=new Set(); data.filter(d=>(d.FECHA_LLAMADA||d.FECHA).startsWith(m)).forEach(d=>sems.add(d.SEMANA)); Array.from(sems).sort().forEach(s=>mS.add(new Option(`↳ ${s}`,`${m}|${s}`))); });
+            // Lógica restaurada para Mes + Semanas
+            Array.from(ms).sort().reverse().forEach(m=>{ 
+                mS.add(new Option(`📅 ${m}`,m)); 
+                const sems=new Set(); 
+                data.filter(d=>(d.FECHA_LLAMADA||d.FECHA).startsWith(m)).forEach(d=>sems.add(d.SEMANA)); 
+                Array.from(sems).sort().forEach(s=>mS.add(new Option(`↳ ${s}`,`${m}|${s}`))); 
+            });
             Array.from(sp).sort().forEach(s=>sP.add(new Option(s,s))); Array.from(sv).sort().forEach(s=>sV.add(new Option(s,s)));
             if(saveM) mS.value = saveM;
         }
@@ -528,6 +423,9 @@
         function aplicarFiltros(){
             const fm=document.getElementById('fMes').value, fsp=document.getElementById('fSup').value, fsv=document.getElementById('fServ').value, fs=document.getElementById('fSearch').value.toLowerCase();
             document.getElementById('lblPeriodoCobertura').innerText = fm !== "TODOS" ? (fm.includes('|') ? `Filtrado: ${fm.split('|')[0]} - ${fm.split('|')[1]}` : `Filtrado: ${fm}`) : "Todo el Historial";
+            activeTableFilter = null; // Resetear filtro temporal de tarjeta
+            document.getElementById('btnResetTabla').classList.add('hidden');
+            
             FILTERED_DATA=RAW_DATA.filter(d=>{
                 let f=d.FECHA_LLAMADA||d.FECHA;
                 if(fm!=='TODOS'){ if(fm.includes('|')){const[m,s]=fm.split('|');if(!f.startsWith(m)||d.SEMANA!==s)return false}else if(!f.startsWith(fm))return false }
@@ -536,6 +434,43 @@
             renderDash();
         }
         function resetFiltros(){ document.getElementById('fMes').value='TODOS'; document.getElementById('fSup').value='TODOS'; document.getElementById('fServ').value='TODOS'; document.getElementById('fSearch').value=''; aplicarFiltros(); }
+
+        // --- MANEJO DEL SCROLL EN FILTRO ---
+        function handleScroll() {
+            const dash = document.getElementById('tabDashboard');
+            const filter = document.getElementById('stickyFilter');
+            if (dash.scrollTop > 10) {
+                filter.classList.add('filter-compact');
+                filter.classList.remove('rounded-2xl', 'border');
+            } else {
+                filter.classList.remove('filter-compact');
+                filter.classList.add('rounded-2xl', 'border');
+            }
+        }
+
+        // --- FILTROS POR CLICK EN TARJETAS ---
+        function filtrarSoloPEC() {
+            const dataPec = FILTERED_DATA.filter(d => parseFloat(d.NOTA.replace('%','')) === 0);
+            renderTableCustom(dataPec);
+            activeTableFilter = 'PEC';
+            document.getElementById('btnResetTabla').innerText = "Viendo solo PEC (Click para quitar)";
+            document.getElementById('btnResetTabla').classList.remove('hidden');
+            document.getElementById('tablaDetalleContenedor').scrollIntoView({behavior: 'smooth'});
+        }
+
+        function filtrarPorSupervisor(supName) {
+            const dataSup = FILTERED_DATA.filter(d => d.SUPERVISOR === supName);
+            renderTableCustom(dataSup);
+            activeTableFilter = supName;
+            document.getElementById('btnResetTabla').innerText = `Viendo: ${supName} (Click para quitar)`;
+            document.getElementById('btnResetTabla').classList.remove('hidden');
+            document.getElementById('tablaDetalleContenedor').scrollIntoView({behavior: 'smooth'});
+        }
+
+        function resetFiltroTabla() {
+            renderTable(); // Vuelve a renderizar con FILTERED_DATA global
+            document.getElementById('btnResetTabla').classList.add('hidden');
+        }
 
         function renderDash(){
             const d=FILTERED_DATA;
@@ -546,18 +481,12 @@
                 let v=sMap[k];
                 let gen = v.t?(v.g/v.t).toFixed(0):0; let penc = v.pc?(v.p/v.pc).toFixed(0):0; let feed = v.t?((v.f/v.t)*100).toFixed(0):0;
                 let colGen = gen >= 85 ? 'text-emerald-600' : 'text-red-600'; let colPenc = penc >= 85 ? 'text-emerald-600' : 'text-red-600';
-                sc.innerHTML+=`<div class="bg-white p-5 rounded-2xl shadow border border-slate-200 hover:shadow-lg transition"><h4 class="font-black text-sm text-slate-700 border-b border-slate-100 pb-2 mb-3">${k}</h4><div class="grid grid-cols-3 gap-2 text-center text-xs"><div><p class="text-slate-400 font-bold uppercase text-[9px]">General</p><p class="text-2xl font-black ${colGen}">${gen}%</p></div><div class="border-x border-slate-100"><p class="text-slate-400 font-bold uppercase text-[9px]">PENC</p><p class="text-2xl font-black ${colPenc}">${penc}%</p></div><div><p class="text-slate-400 font-bold uppercase text-[9px]">Feed</p><p class="text-2xl font-black text-purple-500">${feed}%</p></div></div></div>`;
+                // Añadido onclick para filtrar tabla
+                sc.innerHTML+=`<div onclick="filtrarPorSupervisor('${k}')" class="bg-white p-5 rounded-2xl shadow border border-slate-200 clickable-card"><h4 class="font-black text-sm text-slate-700 border-b border-slate-100 pb-2 mb-3">${k}</h4><div class="grid grid-cols-3 gap-2 text-center text-xs"><div><p class="text-slate-400 font-bold uppercase text-[9px]">General</p><p class="text-2xl font-black ${colGen}">${gen}%</p></div><div class="border-x border-slate-100"><p class="text-slate-400 font-bold uppercase text-[9px]">PENC</p><p class="text-2xl font-black ${colPenc}">${penc}%</p></div><div><p class="text-slate-400 font-bold uppercase text-[9px]">Feed</p><p class="text-2xl font-black text-purple-500">${feed}%</p></div></div></div>`;
             });
             
-            // 2. Exec Table
-            const eMap={}; baseEjecutivos.forEach(e=>eMap[e.nombre]={n:e.nombre,s:e.sup,sv:e.serv,c:0});
-            d.forEach(x=>{if(eMap[x.NOMBRE])eMap[x.NOMBRE].c++});
-            let arr=Object.values(eMap);
-            const fSup=document.getElementById('fSup').value, fServ=document.getElementById('fServ').value, fSearch=document.getElementById('fSearch').value.toLowerCase();
-            if(fSup!=='TODOS') arr=arr.filter(x=>x.s===fSup); if(fServ!=='TODOS') arr=arr.filter(x=>x.sv===fServ); if(fSearch) arr=arr.filter(x=>x.n.toLowerCase().includes(fSearch));
-            arr.sort((a,b)=>a.c-b.c);
-            const tb=document.getElementById('execSummaryTable'); tb.innerHTML="";
-            arr.forEach(x=>{ const cClass = x.c===0 ? "text-red-500 bg-red-50" : "text-slate-700"; tb.innerHTML+=`<tr class="border-b border-slate-100 hover:bg-slate-50 transition"><td class="p-2 font-bold">${x.n}</td><td class="p-2 text-[10px]">${x.s}</td><td class="p-2 text-[10px]">${x.sv}</td><td class="p-2 text-center font-black ${cClass}">${x.c}</td></tr>`; });
+            // 2. Tarjetas de Ejecutivos
+            renderTeamCards(d);
 
             // 3. KPIs Globales
             const ns=d.map(x=>parseFloat(x.NOTA.replace('%',''))||0);
@@ -570,7 +499,10 @@
             document.getElementById('kpiFeedback').innerText=d.filter(x=>x.FEEDBACK_STATUS==='REALIZADO').length;
             document.getElementById('kpiApel').innerText=d.filter(x=>x.APELACION_ESTADO!=="").length;
 
-            // 4. TOPS y QUIEBRES (Corregido con Nombres Reales)
+            // 4. GRÁFICOS ANALÍTICOS (Chart.js)
+            renderAdvancedCharts(d);
+
+            // 5. TOPS y QUIEBRES
             let pencErrors = 0;
             let pecCounts = {};
             let pencCounts = {};
@@ -579,11 +511,8 @@
                 if(x.DETALLE) {
                     for(const [k, v] of Object.entries(x.DETALLE)) {
                         if(v === 'NO') {
-                            // Detectar Categoría por prefijo técnico
                             const isPec = ["SEG_", "COND_", "OP_", "SIST_"].some(pre => k.startsWith(pre));
-                            // Traducir nombre
                             const nombreReal = INDICADORES_MAP[k] || k;
-                            
                             if(isPec) {
                                 pecCounts[nombreReal] = (pecCounts[nombreReal] || 0) + 1;
                             } else {
@@ -600,6 +529,151 @@
             renderTable();
         }
 
+        // --- NUEVO: TARJETAS EJECUTIVOS ---
+        function renderTeamCards(filteredData) {
+            const container = document.getElementById('teamCardsGrid');
+            container.innerHTML = "";
+            const fSup = document.getElementById('fSup').value;
+            
+            let targetExecs = baseEjecutivos;
+            if(fSup !== 'TODOS') {
+                targetExecs = baseEjecutivos.filter(e => e.sup === fSup);
+            }
+
+            const counts = {};
+            targetExecs.forEach(e => counts[e.nombre] = 0);
+            filteredData.forEach(d => {
+                if(counts.hasOwnProperty(d.NOMBRE)) counts[d.NOMBRE]++;
+            });
+
+            targetExecs.forEach(e => {
+                const count = counts[e.nombre];
+                const bgClass = count === 0 ? "bg-red-50 border-red-300 ring-2 ring-red-100" : "bg-white border-slate-200 hover:shadow-md";
+                const numClass = count === 0 ? "text-red-600" : "text-indigo-600";
+                
+                const parts = e.nombre.split(' ');
+                const shortName = `${parts[0]} ${parts[1]||''}`;
+
+                container.innerHTML += `
+                    <div class="p-3 rounded-lg border ${bgClass} flex justify-between items-center transition">
+                        <div class="truncate pr-2">
+                            <p class="text-[10px] font-bold text-slate-600 truncate uppercase" title="${e.nombre}">${shortName}</p>
+                            <p class="text-[8px] text-slate-400 uppercase font-bold">${e.sup.split(' ')[0]}</p>
+                        </div>
+                        <span class="text-xl font-black ${numClass}">${count}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // --- FUNCIONES CHART.JS ---
+        function renderAdvancedCharts(data) {
+            const getNote = d => parseFloat(d.NOTA.replace('%','')) || 0;
+            const colors = { indigo: '#6366f1', emerald: '#10b981', rose: '#f43f5e', amber: '#f59e0b', slate: '#64748b' };
+
+            // 1. Evolución (ORDENADO CRONOLÓGICAMENTE)
+            const weekMap = {};
+            data.forEach(d => {
+                // Clave combinada para ordenar correctamente: YYYY-MM | Semana X
+                const fechaBase = d.FECHA_LLAMADA || d.FECHA;
+                const mes = fechaBase.substring(0, 7); // 2026-02
+                const sem = d.SEMANA;
+                const key = `${mes} | ${sem}`;
+                
+                if(!weekMap[key]) weekMap[key] = { sum:0, count:0 };
+                weekMap[key].sum += getNote(d);
+                weekMap[key].count++;
+            });
+            const weeks = Object.keys(weekMap).sort(); // Ordenamiento alfabético ISO funciona bien
+            updateChart('chartEvolucion', 'line', {
+                labels: weeks,
+                datasets: [{ label: 'Calidad Promedio', data: weeks.map(w => (weekMap[w].sum/weekMap[w].count).toFixed(1)), borderColor: colors.indigo, tension: 0.3, fill: true, backgroundColor: '#6366f110' }]
+            });
+
+            // 2. Distribución
+            let dist = { crit:0, media:0, meta:0, exc:0 };
+            data.forEach(d => {
+                const n = getNote(d);
+                if(n <= 70) dist.crit++;
+                else if(n <= 84) dist.media++;
+                else if(n < 100) dist.meta++;
+                else dist.exc++;
+            });
+            updateChart('chartDistribucion', 'bar', {
+                labels: ['Crítica (0-70%)', 'Media (71-84%)', 'Meta (85-99%)', 'Excelencia (100%)'],
+                datasets: [{ label: 'Cantidad', data: [dist.crit, dist.media, dist.meta, dist.exc], backgroundColor: [colors.rose, colors.amber, colors.indigo, colors.emerald] }]
+            });
+
+            // 3. Top PECs (Con Datalabels y Leyenda Derecha)
+            let pecCounts = {};
+            data.forEach(d => {
+                if(d.DETALLE) Object.entries(d.DETALLE).forEach(([k,v]) => {
+                    if(v==='NO' && ["SEG_","COND_","OP_","SIST_"].some(p=>k.startsWith(p))) pecCounts[INDICADORES_MAP[k]||k] = (pecCounts[INDICADORES_MAP[k]||k]||0)+1;
+                });
+            });
+            const sortedPec = Object.entries(pecCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+            updateChart('chartPecDona', 'doughnut', {
+                labels: sortedPec.map(x=>x[0]),
+                datasets: [{ data: sortedPec.map(x=>x[1]), backgroundColor: [colors.rose, colors.amber, colors.indigo, colors.emerald, colors.slate] }]
+            }, { 
+                plugins: { 
+                    legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } },
+                    datalabels: { color: '#fff', font: { weight: 'bold' } } 
+                } 
+            });
+
+            // 4. Servicios
+            const servMap = {};
+            data.forEach(d => {
+                if(!servMap[d.SERVICIO]) servMap[d.SERVICIO]={sum:0,c:0};
+                servMap[d.SERVICIO].sum+=getNote(d); servMap[d.SERVICIO].c++;
+            });
+            const servs = Object.keys(servMap);
+            updateChart('chartServicios', 'bar', {
+                labels: servs,
+                datasets: [{ label: 'Promedio', data: servs.map(s=>(servMap[s].sum/servMap[s].c).toFixed(1)), backgroundColor: colors.indigo }]
+            });
+
+            // 5. Feedback
+            const execFeed = {};
+            data.forEach(d => {
+                if(!execFeed[d.NOMBRE]) execFeed[d.NOMBRE] = { pend:0, real:0 };
+                if(d.FEEDBACK_STATUS === 'REALIZADO') execFeed[d.NOMBRE].real++; else execFeed[d.NOMBRE].pend++;
+            });
+            const sortedExecs = Object.keys(execFeed).sort((a,b) => (execFeed[b].pend+execFeed[b].real) - (execFeed[a].pend+execFeed[a].real)).slice(0, 10);
+            updateChart('chartFeedbackStack', 'bar', {
+                labels: sortedExecs.map(n => n.split(' ')[0]),
+                datasets: [
+                    { label: 'Realizado', data: sortedExecs.map(e => execFeed[e].real), backgroundColor: colors.emerald },
+                    { label: 'Pendiente', data: sortedExecs.map(e => execFeed[e].pend), backgroundColor: colors.rose }
+                ]
+            }, { scales: { x: { stacked: true }, y: { stacked: true } } });
+        }
+
+        function updateChart(id, type, data, extraOptions = {}) {
+            const ctx = document.getElementById(id).getContext('2d');
+            if(chartInstances[id]) chartInstances[id].destroy();
+            
+            const baseOptions = { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                    datalabels: {
+                        color: '#fff', font: { weight: 'bold' },
+                        display: function(context) { return context.dataset.data[context.dataIndex] > 0; } // Solo mostrar si > 0
+                    }
+                } 
+            };
+            
+            // Merge options
+            const finalOptions = { ...baseOptions, ...extraOptions };
+            if(extraOptions.plugins) finalOptions.plugins = { ...baseOptions.plugins, ...extraOptions.plugins };
+            
+            const plugins = [ChartDataLabels]; 
+            chartInstances[id] = new Chart(ctx, { type: type, data: data, options: finalOptions, plugins: plugins });
+        }
+
         function renderTopList(elementId, countsObj, textClass, bgClass) {
             const ul = document.getElementById(elementId); ul.innerHTML = "";
             const sorted = Object.entries(countsObj).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -607,21 +681,48 @@
             sorted.forEach(([key, count]) => { ul.innerHTML += `<li class="flex justify-between items-center border-b border-slate-100 pb-1 last:border-0"><span class="font-bold text-[10px] text-slate-600 truncate w-3/4" title="${key}">${key}</span><span class="${bgClass} ${textClass} px-2 py-0.5 rounded-full font-black text-[10px]">${count}</span></li>`; });
         }
 
-        function renderTable(){
+        // --- ORDENAMIENTO TABLA ---
+        function sortTable(col) {
+            if(currentSortCol === col) currentSortAsc = !currentSortAsc; 
+            else { currentSortCol = col; currentSortAsc = true; }
+            
+            // Si hay un filtro activo por tarjeta, ordenamos esa data, si no la global
+            let targetData = (activeTableFilter) ? 
+                             (activeTableFilter === 'PEC' ? FILTERED_DATA.filter(d=>parseFloat(d.NOTA.replace('%',''))===0) : FILTERED_DATA.filter(d=>d.SUPERVISOR===activeTableFilter))
+                             : FILTERED_DATA;
+
+            targetData.sort((a,b) => {
+                let valA, valB;
+                if (col === 'CODIGO') { valA = a.CODIGO; valB = b.CODIGO; }
+                else if (col === 'NOMBRE') { valA = a.NOMBRE; valB = b.NOMBRE; }
+                else if (col === 'SUPERVISOR') { valA = a.SUPERVISOR; valB = b.SUPERVISOR; }
+                else if (col === 'FECHA') { valA = new Date(a.FECHA_LLAMADA || a.FECHA); valB = new Date(b.FECHA_LLAMADA || b.FECHA); }
+                else if (col === 'NOTA') { valA = parseFloat(a.NOTA.replace('%','')); valB = parseFloat(b.NOTA.replace('%','')); }
+                
+                if (valA < valB) return currentSortAsc ? -1 : 1;
+                if (valA > valB) return currentSortAsc ? 1 : -1;
+                return 0;
+            });
+            renderTableCustom(targetData); 
+        }
+
+        // Función auxiliar para renderizar datos custom (filtrados por click)
+        function renderTableCustom(customData) {
             const tb=document.getElementById('mainTable'); tb.innerHTML="";
-            FILTERED_DATA.forEach(d=>{
+            customData.forEach(d=>{
                 const n = parseFloat(d.NOTA.replace('%',''));
                 const col = n >= 85 ? 'text-emerald-600' : (n===0 ? 'text-red-600' : 'text-amber-600');
                 tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100 cursor-pointer group" onclick='showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'><td class="p-2 text-[10px] text-slate-400">${d.CODIGO}</td><td class="p-2 font-bold text-slate-700">${d.NOMBRE}</td><td class="p-2 text-[10px]">${d.SUPERVISOR}</td><td class="p-2 text-[10px] font-mono">${d.FECHA_LLAMADA||d.FECHA}</td><td class="p-2 text-[10px]">${d.SEMANA}</td><td class="p-2 text-[10px]">${d.SERVICIO}</td><td class="p-2 text-center font-black ${col}">${d.NOTA}</td><td class="p-2 text-center text-[10px]">${d.FEEDBACK_STATUS==='REALIZADO'?'✅':'⏳'}</td><td class="p-2 text-center"><i class="fas fa-eye text-slate-300 group-hover:text-indigo-500 transition"></i></td></tr>`;
             });
         }
 
-        // --- DETALLE FULL ---
+        function renderTable(){ renderTableCustom(FILTERED_DATA); }
+
         function showDetail(d){
             let itemsHtml = "";
             let tieneQuiebres = false;
 
-            if(d.DETALLE) {
+            if (d.DETALLE) {
                 Object.entries(d.DETALLE).forEach(([k,v])=>{
                     if(v==='NO') {
                         tieneQuiebres = true;
@@ -629,7 +730,6 @@
                         const nombreReal = INDICADORES_MAP[k] || k;
                         const badge = isPec ? '<span class="bg-red-100 text-red-600 px-1 rounded text-[9px] font-bold">PEC</span>' : '<span class="bg-orange-100 text-orange-600 px-1 rounded text-[9px] font-bold">PENC</span>';
                         
-                        // Extraer observación específica
                         let safeName = nombreReal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                         let regex = new RegExp(`•\\s*${safeName}.*?:\\s*(.*?)(?:\\n|$)`, 'i');
                         let match = d.OBS.match(regex);
@@ -641,7 +741,6 @@
             }
             if(!tieneQuiebres) itemsHtml = '<li class="text-emerald-500 italic text-center py-2">✨ Felicitaciones, sin errores.</li>';
 
-            // Audio Player
             let audioSection = "";
             if (d.AUDIO_URL && d.AUDIO_URL.length > 5) {
                 audioSection = `<div class="bg-slate-100 p-2 rounded border border-slate-200 mb-3"><p class="text-[9px] font-bold text-slate-400 uppercase mb-1"><i class="fas fa-play-circle"></i> Audio Llamada</p><audio controls src="${d.AUDIO_URL}" class="w-full h-8"></audio></div>`;
@@ -649,33 +748,30 @@
                 audioSection = `<div class="bg-gray-50 p-2 rounded border border-gray-200 mb-3 text-center text-xs text-gray-400 italic">Audio no disponible</div>`;
             }
 
-            // Feedback
             let feedHtml = d.FEEDBACK_STATUS === 'REALIZADO' ? `<div class="mt-3 bg-indigo-50 p-2 rounded border border-indigo-100"><p class="text-[9px] font-bold text-indigo-500 uppercase mb-1"><i class="fas fa-check-circle"></i> Feedback Realizado</p><p class="text-xs text-indigo-800 italic">"${d.FEEDBACK_TXT || ''}"</p></div>` : `<div class="mt-3 bg-orange-50 p-2 rounded border border-orange-100 text-center"><p class="text-[10px] font-bold text-orange-500 uppercase">Feedback Pendiente ⏳</p></div>`;
 
             const rutPac = d.RUT_PACIENTE || 'No registrado';
 
             Swal.fire({
-                title: `<div class="text-left"><span class="text-xs text-slate-400 font-normal uppercase block">Detalle Evaluación</span>${d.NOMBRE}</div>`,
+                title: `<div class="text-left"><span class="text-xs text-slate-400 uppercase">Detalle Evaluación</span><br>${d.NOMBRE}</div>`,
                 html: `
                     <div class="text-left">
                         <div class="flex justify-between items-center mb-4">
                             <div><span class="block text-[9px] font-bold text-slate-400 uppercase">RUT Paciente</span><div class="flex items-center gap-2"><span class="font-mono text-xs font-bold bg-slate-100 px-2 rounded">${rutPac}</span><button onclick="copiarRut('${rutPac}')" class="text-indigo-500 hover:text-indigo-700" title="Copiar"><i class="fas fa-copy"></i></button></div></div>
                             <div class="text-right"><span class="text-6xl font-black ${parseFloat(d.NOTA)>=85?'text-emerald-500':(parseFloat(d.NOTA)===0?'text-red-500':'text-amber-500')} tracking-tighter leading-none">${d.NOTA}</span><span class="block text-[9px] text-slate-300 font-bold uppercase">Nota Final</span></div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 text-[10px] bg-slate-50 p-2 rounded mb-3 border border-slate-100">
-                            <div><span class="font-bold text-slate-400">Fecha:</span> ${d.FECHA_LLAMADA||d.FECHA} ${d.HORA_LLAMADA||''}</div>
-                            <div><span class="font-bold text-slate-400">Semana:</span> ${d.SEMANA}</div>
-                            <div><span class="font-bold text-slate-400">Auditor:</span> ${d.AUDITOR_REAL || d.AUDITOR || 'Admin'}</div>
-                            <div><span class="font-bold text-slate-400">Supervisor:</span> ${d.SUPERVISOR}</div>
+                        <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded mb-3 border border-slate-100">
+                            <div><b>Fecha:</b> ${d.FECHA_LLAMADA}</div>
+                            <div><b>Auditor:</b> ${d.AUDITOR_REAL||'Admin'}</div>
                         </div>
                         ${audioSection}
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Observación General</p>
-                        <div class="text-xs bg-slate-50 p-2 italic mb-3 border border-slate-100 rounded text-slate-600">"${d.OBS.split('---')[0]}"</div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Detalle Quiebres</p>
-                        <ul class="max-h-32 overflow-y-auto pr-1 mb-2 custom-scrollbar">${itemsHtml}</ul>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Quiebres:</p>
+                        <ul class="max-h-32 overflow-y-auto mb-3">${itemsHtml}</ul>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Observación:</p>
+                        <p class="text-xs italic bg-slate-50 p-2 rounded">${d.OBS.split('---')[0]}</p>
                         ${feedHtml}
                     </div>`,
-                width: '550px', showCloseButton: true, showConfirmButton: false, customClass: { popup: 'rounded-2xl' }
+                width: '500px', showConfirmButton: false, showCloseButton: true
             });
         }
 
@@ -694,9 +790,9 @@
         }
 
         function exportarExcel() { 
-            const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(FILTERED_DATA); XLSX.utils.book_append_sheet(wb, ws, "Reporte_QA"); XLSX.writeFile(wb, "Reporte_Calidad.xlsx");
+            const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(FILTERED_DATA); 
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte_QA"); XLSX.writeFile(wb, "Reporte_Calidad.xlsx");
         }
     </script>
 </body>
 </html>
-
