@@ -111,9 +111,6 @@
             <button onclick="cambiarTab('tabApelaciones')" id="navBtnApel" class="nav-btn px-4 py-1.5 rounded text-white">Apelaciones</button>
             <button onclick="cambiarTab('tabVacios')" id="navBtnVacios" class="nav-btn px-4 py-1.5 rounded text-white">Vacíos</button>
         </div>
-        <div id="tabVacios" class="hidden flex-1 bg-slate-100 relative">
-        <iframe src="vacios.html" class="w-full h-full absolute top-0 left-0" style="border: none;"></iframe>
-    </div>
     </nav>
 
     <div id="tabIngreso" class="flex-1 overflow-y-auto p-4">
@@ -138,7 +135,7 @@
                     <div><span class="font-bold text-slate-400 uppercase mr-1">Sup:</span><input id="inputSup" name="supervisor" class="bg-transparent font-bold w-32" readonly></div>
                     <div><span class="font-bold text-slate-400 uppercase mr-1">Serv:</span><input id="inputServ" name="servicio" class="bg-transparent font-bold w-32" readonly></div>
                 </div>
-                <div class="hidden"><input type="date" id="fechaAuditoria" name="fecha_auditoria"><input type="text" name="auditor_real" value="Admin Master"><input type="text" name="rut" value="N/A"></div>
+                <div class="hidden"><input type="date" id="fechaAuditoria" name="fecha_auditoria"><input type="text" name="auditor_real" value="Marco Lara"><input type="text" name="rut" value="N/A"></div>
                 <div class="border border-slate-200 rounded overflow-hidden">
                     <table class="w-full text-[11px]">
                         <thead class="bg-slate-800 text-white uppercase tracking-wider text-[10px]"><tr><th class="p-2 text-left">Indicador</th><th class="p-2 text-center w-20">Cumple</th><th class="p-2 text-center w-20">Estado</th><th class="p-2 text-left">Observación</th></tr></thead>
@@ -167,7 +164,7 @@
             <div id="loadingIndicator" class="loader ml-2 hidden"></div>
         </div>
 
-        <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest mt-6">Rendimiento por Líder</h3>
+        <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest mt-6">Rendimiento por Líder y Auditor</h3>
         <div id="supervisorCards" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"><div class="bg-slate-200 p-4 rounded-xl animate-pulse h-32"></div></div>
 
         <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest">Métricas Globales</h3>
@@ -249,8 +246,9 @@
     <div id="tabApelaciones" class="hidden flex-1 overflow-y-auto p-6 bg-slate-100">
         <div class="max-w-5xl mx-auto"><h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center"><i class="fas fa-gavel text-pink-500 mr-2"></i> Gestión de Apelaciones</h2><div id="contApelaciones" class="grid grid-cols-1 gap-4"><p class="text-center text-slate-400 py-10 italic">Cargando...</p></div></div>
     </div>
-    <div id="tabVacios" class="hidden flex-1 bg-slate-100 relative h-full">
-        <iframe src="vacios.html" class="w-full h-full border-0 absolute top-0 left-0"></iframe>
+
+    <div id="tabVacios" class="hidden flex-1 bg-slate-100 h-full">
+        <iframe src="vacios.html" class="w-full h-full border-0" style="min-height: calc(100vh - 64px);"></iframe>
     </div>
 
     <script>
@@ -279,7 +277,12 @@
             {nombre:"María Farías Quintero", codigo:"CC0851", sup:"Carla Cabrera", serv:"Mesa Central"},
             {nombre:"Saymar Paéz García", codigo:"CC1992", sup:"Carla Cabrera", serv:"FDS"},
             {nombre:"Belfred Belis Mijares", codigo:"CC8219", sup:"Aracely Torres", serv:"FDS"},
-
+            // Supervisores y Admin (Se mantienen para productividad)
+            {nombre:"Carla Cabrera Lara", codigo:"S5388", sup:"Aracely Torres", serv:"HLF"},
+            {nombre:"Aracely Torres Faúndez", codigo:"S7637", sup:"Aracely Torres", serv:"HLF"},
+            {nombre:"Luis Cataldo Galaz", codigo:"S2065", sup:"Aracely Torres", serv:"HLF"},
+            {nombre:"María Angélica Ferrada Cea", codigo:"S7705", sup:"Aracely Torres", serv:"HLF"},
+            {nombre:"Marco Lara Vera", codigo:"S0226", sup:"Aracely Torres", serv:"HLF"}
         ];
 
         const INDICADORES_MAP = {
@@ -309,7 +312,7 @@
         let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0;
         let chartInstances = {}; 
         let currentSortCol = 'FECHA', currentSortAsc = false;
-        let activeTableFilter = null; // Para guardar si hay filtro temporal por click en tarjeta
+        let activeTableFilter = null; 
 
         window.onload = () => { 
             renderFormTable(); 
@@ -380,7 +383,6 @@
         });
 
         function cambiarTab(id){
-            // 1. Agregamos 'tabVacios' a la lista de ocultar
             ['tabIngreso','tabDashboard','tabApelaciones','tabVacios'].forEach(t=>document.getElementById(t).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
             const showDocks = (id === 'tabIngreso');
@@ -388,12 +390,14 @@
             document.getElementById('audioDock').classList.toggle('hidden', !showDocks);
             if(!showDocks) { document.getElementById('openToolsBtn').classList.add('hidden'); document.getElementById('openAudioBtn').classList.add('hidden'); }
             
-            // 2. Agregamos 'navBtnVacios' a la lista de botones
-            ['navBtnIngreso', 'navBtnDash', 'navBtnApel', 'navBtnVacios'].forEach(b => { document.getElementById(b).classList.remove('active-tab'); document.getElementById(b).classList.add('opacity-60'); });
+            ['navBtnIngreso', 'navBtnDash', 'navBtnApel', 'navBtnVacios'].forEach(b => { 
+                const el = document.getElementById(b);
+                if(el) { el.classList.remove('active-tab'); el.classList.add('opacity-60'); }
+            });
             
-            // 3. Agregamos la lógica para saber si el botón activo es el de Vacíos
             const activeBtn = id === 'tabIngreso' ? 'navBtnIngreso' : (id === 'tabDashboard' ? 'navBtnDash' : (id === 'tabApelaciones' ? 'navBtnApel' : 'navBtnVacios'));
-            const elActive = document.getElementById(activeBtn); elActive.classList.add('active-tab'); elActive.classList.remove('opacity-60');
+            const elActive = document.getElementById(activeBtn);
+            if(elActive) { elActive.classList.add('active-tab'); elActive.classList.remove('opacity-60'); }
             
             if(id==='tabDashboard' || id==='tabApelaciones') { if(RAW_DATA.length > 0) { aplicarFiltros(); renderApelaciones(RAW_DATA); } else { loadData(); } }
         }
@@ -407,7 +411,7 @@
             if(Array.isArray(data)) {
                 RAW_DATA = data;
                 fillSelects(RAW_DATA); aplicarFiltros(); renderApelaciones(RAW_DATA);
-            } else { Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar a la base de datos (Bloqueo de Red).'}); }
+            } else { Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar a la base de datos.'}); }
             if(loader) loader.classList.add('hidden');
         }
         async function intentarFetch(url) { try { const resp = await fetch(url); if (!resp.ok) return null; const json = await resp.json(); return Array.isArray(json) ? json : null; } catch (e) { return null; } }
@@ -418,7 +422,6 @@
             mS.innerHTML='<option value="TODOS">📅 Histórico</option>'; sP.innerHTML='<option value="TODOS">Todos</option>'; sV.innerHTML='<option value="TODOS">Todos</option>';
             const ms=new Set(), sp=new Set(), sv=new Set();
             data.forEach(d=>{ let f=d.FECHA_LLAMADA||d.FECHA; if(f&&f.length>=7)ms.add(f.substring(0,7)); sp.add(d.SUPERVISOR); sv.add(d.SERVICIO); });
-            // Lógica restaurada para Mes + Semanas
             Array.from(ms).sort().reverse().forEach(m=>{ 
                 mS.add(new Option(`📅 ${m}`,m)); 
                 const sems=new Set(); 
@@ -432,7 +435,7 @@
         function aplicarFiltros(){
             const fm=document.getElementById('fMes').value, fsp=document.getElementById('fSup').value, fsv=document.getElementById('fServ').value, fs=document.getElementById('fSearch').value.toLowerCase();
             document.getElementById('lblPeriodoCobertura').innerText = fm !== "TODOS" ? (fm.includes('|') ? `Filtrado: ${fm.split('|')[0]} - ${fm.split('|')[1]}` : `Filtrado: ${fm}`) : "Todo el Historial";
-            activeTableFilter = null; // Resetear filtro temporal de tarjeta
+            activeTableFilter = null; 
             document.getElementById('btnResetTabla').classList.add('hidden');
             
             FILTERED_DATA=RAW_DATA.filter(d=>{
@@ -444,7 +447,6 @@
         }
         function resetFiltros(){ document.getElementById('fMes').value='TODOS'; document.getElementById('fSup').value='TODOS'; document.getElementById('fServ').value='TODOS'; document.getElementById('fSearch').value=''; aplicarFiltros(); }
 
-        // --- MANEJO DEL SCROLL EN FILTRO ---
         function handleScroll() {
             const dash = document.getElementById('tabDashboard');
             const filter = document.getElementById('stickyFilter');
@@ -457,7 +459,6 @@
             }
         }
 
-        // --- FILTROS POR CLICK EN TARJETAS ---
         function filtrarSoloPEC() {
             const dataPec = FILTERED_DATA.filter(d => parseFloat(d.NOTA.replace('%','')) === 0);
             renderTableCustom(dataPec);
@@ -477,29 +478,61 @@
         }
 
         function resetFiltroTabla() {
-            renderTable(); // Vuelve a renderizar con FILTERED_DATA global
+            renderTable(); 
             document.getElementById('btnResetTabla').classList.add('hidden');
         }
 
         function renderDash(){
             const d=FILTERED_DATA;
+            const auditorCounts = {};
+            const currentDate = new Date();
+            const currentMonth = currentDate.toISOString().slice(0, 7);
+            
+            // Cálculo de productividad por Auditor (Marco Lara y Supervisores)
+            d.forEach(x => {
+                const auditor = x.AUDITOR_REAL || 'Admin';
+                if(!auditorCounts[auditor]) auditorCounts[auditor] = { total: 0, mes: 0, sem: 0 };
+                auditorCounts[auditor].total++;
+                const fecha = x.FECHA_LLAMADA || x.FECHA;
+                if(fecha.startsWith(currentMonth)) auditorCounts[auditor].mes++;
+            });
+
             // 1. Sups
             const sMap={}; d.forEach(x=>{if(!sMap[x.SUPERVISOR])sMap[x.SUPERVISOR]={t:0,g:0,p:0,pc:0,f:0}; let n=parseFloat(x.NOTA.replace('%',''))||0; sMap[x.SUPERVISOR].t++; sMap[x.SUPERVISOR].g+=n; if(n>0){sMap[x.SUPERVISOR].p+=n;sMap[x.SUPERVISOR].pc++} if(x.FEEDBACK_STATUS==='REALIZADO')sMap[x.SUPERVISOR].f++});
             const sc=document.getElementById('supervisorCards'); sc.innerHTML="";
+
+            // Tarjeta de Marco Lara (Productividad y Nota Global)
+            const ns=d.map(x=>parseFloat(x.NOTA.replace('%',''))||0);
+            const promGen = ns.length ? (ns.reduce((a,b)=>a+b,0)/ns.length).toFixed(0) : 0;
+            const mlP = auditorCounts["Marco Lara"] || {total:0, mes:0};
+
+            sc.innerHTML += `<div class="bg-indigo-50 p-5 rounded-2xl shadow border border-indigo-200 clickable-card">
+                <h4 class="font-black text-sm text-indigo-900 border-b border-indigo-100 pb-2 mb-3">Marco Lara</h4>
+                <div class="grid grid-cols-2 gap-2 text-center text-xs mb-2">
+                    <div><p class="text-indigo-400 font-bold uppercase text-[9px]">Nota Global</p><p class="text-2xl font-black text-indigo-700">${promGen}%</p></div>
+                    <div><p class="text-indigo-400 font-bold uppercase text-[9px]">Auditorías</p><p class="text-2xl font-black text-slate-700">${mlP.total}</p></div>
+                </div>
+                <div class="bg-white/60 rounded p-1 text-center text-[9px] font-bold text-slate-500">Mes Actual: ${mlP.mes}</div>
+            </div>`;
+
             Object.keys(sMap).forEach(k=>{
                 let v=sMap[k];
                 let gen = v.t?(v.g/v.t).toFixed(0):0; let penc = v.pc?(v.p/v.pc).toFixed(0):0; let feed = v.t?((v.f/v.t)*100).toFixed(0):0;
-                let colGen = gen >= 85 ? 'text-emerald-600' : 'text-red-600'; let colPenc = penc >= 85 ? 'text-emerald-600' : 'text-red-600';
-                // Añadido onclick para filtrar tabla
-                sc.innerHTML+=`<div onclick="filtrarPorSupervisor('${k}')" class="bg-white p-5 rounded-2xl shadow border border-slate-200 clickable-card"><h4 class="font-black text-sm text-slate-700 border-b border-slate-100 pb-2 mb-3">${k}</h4><div class="grid grid-cols-3 gap-2 text-center text-xs"><div><p class="text-slate-400 font-bold uppercase text-[9px]">General</p><p class="text-2xl font-black ${colGen}">${gen}%</p></div><div class="border-x border-slate-100"><p class="text-slate-400 font-bold uppercase text-[9px]">PENC</p><p class="text-2xl font-black ${colPenc}">${penc}%</p></div><div><p class="text-slate-400 font-bold uppercase text-[9px]">Feed</p><p class="text-2xl font-black text-purple-500">${feed}%</p></div></div></div>`;
+                let colGen = gen >= 85 ? 'text-emerald-600' : 'text-red-600'; 
+                const supP = auditorCounts[k] || {total:0, mes:0};
+
+                sc.innerHTML+=`<div onclick="filtrarPorSupervisor('${k}')" class="bg-white p-5 rounded-2xl shadow border border-slate-200 clickable-card">
+                    <h4 class="font-black text-sm text-slate-700 border-b border-slate-100 pb-2 mb-3">${k}</h4>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
+                        <div><p class="text-slate-400 font-bold uppercase text-[9px]">General</p><p class="text-xl font-black ${colGen}">${gen}%</p></div>
+                        <div class="border-x border-slate-100"><p class="text-slate-400 font-bold uppercase text-[9px]">Feedback</p><p class="text-xl font-black text-purple-500">${v.f}</p></div>
+                        <div><p class="text-slate-400 font-bold uppercase text-[9px]">Auditor</p><p class="text-xl font-black text-indigo-500">${supP.total}</p></div>
+                    </div>
+                    <div class="bg-slate-50 rounded p-1 text-center text-[9px] font-bold text-slate-400">Auditorías Mes: ${supP.mes}</div>
+                </div>`;
             });
             
-            // 2. Tarjetas de Ejecutivos
             renderTeamCards(d);
-
-            // 3. KPIs Globales
-            const ns=d.map(x=>parseFloat(x.NOTA.replace('%',''))||0);
-            const promGen = ns.length ? (ns.reduce((a,b)=>a+b,0)/ns.length).toFixed(0) : 0;
             const colPromGen = promGen >= 85 ? 'text-emerald-700' : 'text-red-600';
             document.getElementById('kpiTotal').innerText=ns.length;
             const kpiGenEl = document.getElementById('kpiGeneral'); kpiGenEl.innerText = promGen + "%"; kpiGenEl.className = `text-xl font-black ${colPromGen}`;
@@ -507,27 +540,17 @@
             document.getElementById('kpiCountPec').innerText=ns.filter(n=>n===0).length;
             document.getElementById('kpiFeedback').innerText=d.filter(x=>x.FEEDBACK_STATUS==='REALIZADO').length;
             document.getElementById('kpiApel').innerText=d.filter(x=>x.APELACION_ESTADO!=="").length;
-
-            // 4. GRÁFICOS ANALÍTICOS (Chart.js)
             renderAdvancedCharts(d);
 
-            // 5. TOPS y QUIEBRES
-            let pencErrors = 0;
-            let pecCounts = {};
-            let pencCounts = {};
-
+            let pencErrors = 0, pecCounts = {}, pencCounts = {};
             d.forEach(x => {
                 if(x.DETALLE) {
                     for(const [k, v] of Object.entries(x.DETALLE)) {
                         if(v === 'NO') {
                             const isPec = ["SEG_", "COND_", "OP_", "SIST_"].some(pre => k.startsWith(pre));
                             const nombreReal = INDICADORES_MAP[k] || k;
-                            if(isPec) {
-                                pecCounts[nombreReal] = (pecCounts[nombreReal] || 0) + 1;
-                            } else {
-                                pencCounts[nombreReal] = (pencCounts[nombreReal] || 0) + 1;
-                                pencErrors++;
-                            }
+                            if(isPec) pecCounts[nombreReal] = (pecCounts[nombreReal] || 0) + 1;
+                            else { pencCounts[nombreReal] = (pencCounts[nombreReal] || 0) + 1; pencErrors++; }
                         }
                     }
                 }
@@ -538,149 +561,64 @@
             renderTable();
         }
 
-        // --- NUEVO: TARJETAS EJECUTIVOS ---
         function renderTeamCards(filteredData) {
             const container = document.getElementById('teamCardsGrid');
             container.innerHTML = "";
             const fSup = document.getElementById('fSup').value;
-            
             let targetExecs = baseEjecutivos;
-            if(fSup !== 'TODOS') {
-                targetExecs = baseEjecutivos.filter(e => e.sup === fSup);
-            }
-
+            if(fSup !== 'TODOS') targetExecs = baseEjecutivos.filter(e => e.sup === fSup);
             const counts = {};
             targetExecs.forEach(e => counts[e.nombre] = 0);
-            filteredData.forEach(d => {
-                if(counts.hasOwnProperty(d.NOMBRE)) counts[d.NOMBRE]++;
-            });
-
+            filteredData.forEach(d => { if(counts.hasOwnProperty(d.NOMBRE)) counts[d.NOMBRE]++; });
             targetExecs.forEach(e => {
                 const count = counts[e.nombre];
+                if(e.nombre === "Marco Lara Vera" || e.codigo.startsWith("S")) return;
                 const bgClass = count === 0 ? "bg-red-50 border-red-300 ring-2 ring-red-100" : "bg-white border-slate-200 hover:shadow-md";
                 const numClass = count === 0 ? "text-red-600" : "text-indigo-600";
-                
                 const parts = e.nombre.split(' ');
                 const shortName = `${parts[0]} ${parts[1]||''}`;
-
-                container.innerHTML += `
-                    <div class="p-3 rounded-lg border ${bgClass} flex justify-between items-center transition">
-                        <div class="truncate pr-2">
-                            <p class="text-[10px] font-bold text-slate-600 truncate uppercase" title="${e.nombre}">${shortName}</p>
-                            <p class="text-[8px] text-slate-400 uppercase font-bold">${e.sup.split(' ')[0]}</p>
-                        </div>
-                        <span class="text-xl font-black ${numClass}">${count}</span>
-                    </div>
-                `;
+                container.innerHTML += `<div class="p-3 rounded-lg border ${bgClass} flex justify-between items-center transition"><div class="truncate pr-2"><p class="text-[10px] font-bold text-slate-600 truncate uppercase" title="${e.nombre}">${shortName}</p><p class="text-[8px] text-slate-400 uppercase font-bold">${e.sup.split(' ')[0]}</p></div><span class="text-xl font-black ${numClass}">${count}</span></div>`;
             });
         }
 
-        // --- FUNCIONES CHART.JS ---
         function renderAdvancedCharts(data) {
             const getNote = d => parseFloat(d.NOTA.replace('%','')) || 0;
             const colors = { indigo: '#6366f1', emerald: '#10b981', rose: '#f43f5e', amber: '#f59e0b', slate: '#64748b' };
-
-            // 1. Evolución (ORDENADO CRONOLÓGICAMENTE)
             const weekMap = {};
             data.forEach(d => {
-                // Clave combinada para ordenar correctamente: YYYY-MM | Semana X
-                const fechaBase = d.FECHA_LLAMADA || d.FECHA;
-                const mes = fechaBase.substring(0, 7); // 2026-02
-                const sem = d.SEMANA;
-                const key = `${mes} | ${sem}`;
-                
+                const key = `${(d.FECHA_LLAMADA || d.FECHA).substring(0, 7)} | ${d.SEMANA}`;
                 if(!weekMap[key]) weekMap[key] = { sum:0, count:0 };
-                weekMap[key].sum += getNote(d);
-                weekMap[key].count++;
+                weekMap[key].sum += getNote(d); weekMap[key].count++;
             });
-            const weeks = Object.keys(weekMap).sort(); // Ordenamiento alfabético ISO funciona bien
-            updateChart('chartEvolucion', 'line', {
-                labels: weeks,
-                datasets: [{ label: 'Calidad Promedio', data: weeks.map(w => (weekMap[w].sum/weekMap[w].count).toFixed(1)), borderColor: colors.indigo, tension: 0.3, fill: true, backgroundColor: '#6366f110' }]
-            });
-
-            // 2. Distribución
+            const weeks = Object.keys(weekMap).sort();
+            updateChart('chartEvolucion', 'line', { labels: weeks, datasets: [{ label: 'Calidad Promedio', data: weeks.map(w => (weekMap[w].sum/weekMap[w].count).toFixed(1)), borderColor: colors.indigo, tension: 0.3, fill: true, backgroundColor: '#6366f110' }] });
             let dist = { crit:0, media:0, meta:0, exc:0 };
             data.forEach(d => {
                 const n = getNote(d);
-                if(n <= 70) dist.crit++;
-                else if(n <= 84) dist.media++;
-                else if(n < 100) dist.meta++;
-                else dist.exc++;
+                if(n <= 70) dist.crit++; else if(n <= 84) dist.media++; else if(n < 100) dist.meta++; else dist.exc++;
             });
-            updateChart('chartDistribucion', 'bar', {
-                labels: ['Crítica (0-70%)', 'Media (71-84%)', 'Meta (85-99%)', 'Excelencia (100%)'],
-                datasets: [{ label: 'Cantidad', data: [dist.crit, dist.media, dist.meta, dist.exc], backgroundColor: [colors.rose, colors.amber, colors.indigo, colors.emerald] }]
-            });
-
-            // 3. Top PECs (Con Datalabels y Leyenda Derecha)
+            updateChart('chartDistribucion', 'bar', { labels: ['Crítica (0-70%)', 'Media (71-84%)', 'Meta (85-99%)', 'Excelencia (100%)'], datasets: [{ label: 'Cantidad', data: [dist.crit, dist.media, dist.meta, dist.exc], backgroundColor: [colors.rose, colors.amber, colors.indigo, colors.emerald] }] });
             let pecCounts = {};
-            data.forEach(d => {
-                if(d.DETALLE) Object.entries(d.DETALLE).forEach(([k,v]) => {
-                    if(v==='NO' && ["SEG_","COND_","OP_","SIST_"].some(p=>k.startsWith(p))) pecCounts[INDICADORES_MAP[k]||k] = (pecCounts[INDICADORES_MAP[k]||k]||0)+1;
-                });
-            });
+            data.forEach(d => { if(d.DETALLE) Object.entries(d.DETALLE).forEach(([k,v]) => { if(v==='NO' && ["SEG_","COND_","OP_","SIST_"].some(p=>k.startsWith(p))) pecCounts[INDICADORES_MAP[k]||k] = (pecCounts[INDICADORES_MAP[k]||k]||0)+1; }); });
             const sortedPec = Object.entries(pecCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-            updateChart('chartPecDona', 'doughnut', {
-                labels: sortedPec.map(x=>x[0]),
-                datasets: [{ data: sortedPec.map(x=>x[1]), backgroundColor: [colors.rose, colors.amber, colors.indigo, colors.emerald, colors.slate] }]
-            }, { 
-                plugins: { 
-                    legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } },
-                    datalabels: { color: '#fff', font: { weight: 'bold' } } 
-                } 
-            });
-
-            // 4. Servicios
+            updateChart('chartPecDona', 'doughnut', { labels: sortedPec.map(x=>x[0]), datasets: [{ data: sortedPec.map(x=>x[1]), backgroundColor: [colors.rose, colors.amber, colors.indigo, colors.emerald, colors.slate] }] }, { plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } }, datalabels: { color: '#fff', font: { weight: 'bold' } } } });
             const servMap = {};
-            data.forEach(d => {
-                if(!servMap[d.SERVICIO]) servMap[d.SERVICIO]={sum:0,c:0};
-                servMap[d.SERVICIO].sum+=getNote(d); servMap[d.SERVICIO].c++;
-            });
+            data.forEach(d => { if(!servMap[d.SERVICIO]) servMap[d.SERVICIO]={sum:0,c:0}; servMap[d.SERVICIO].sum+=getNote(d); servMap[d.SERVICIO].c++; });
             const servs = Object.keys(servMap);
-            updateChart('chartServicios', 'bar', {
-                labels: servs,
-                datasets: [{ label: 'Promedio', data: servs.map(s=>(servMap[s].sum/servMap[s].c).toFixed(1)), backgroundColor: colors.indigo }]
-            });
-
-            // 5. Feedback
+            updateChart('chartServicios', 'bar', { labels: servs, datasets: [{ label: 'Promedio', data: servs.map(s=>(servMap[s].sum/servMap[s].c).toFixed(1)), backgroundColor: colors.indigo }] });
             const execFeed = {};
-            data.forEach(d => {
-                if(!execFeed[d.NOMBRE]) execFeed[d.NOMBRE] = { pend:0, real:0 };
-                if(d.FEEDBACK_STATUS === 'REALIZADO') execFeed[d.NOMBRE].real++; else execFeed[d.NOMBRE].pend++;
-            });
+            data.forEach(d => { if(!execFeed[d.NOMBRE]) execFeed[d.NOMBRE] = { pend:0, real:0 }; if(d.FEEDBACK_STATUS === 'REALIZADO') execFeed[d.NOMBRE].real++; else execFeed[d.NOMBRE].pend++; });
             const sortedExecs = Object.keys(execFeed).sort((a,b) => (execFeed[b].pend+execFeed[b].real) - (execFeed[a].pend+execFeed[a].real)).slice(0, 10);
-            updateChart('chartFeedbackStack', 'bar', {
-                labels: sortedExecs.map(n => n.split(' ')[0]),
-                datasets: [
-                    { label: 'Realizado', data: sortedExecs.map(e => execFeed[e].real), backgroundColor: colors.emerald },
-                    { label: 'Pendiente', data: sortedExecs.map(e => execFeed[e].pend), backgroundColor: colors.rose }
-                ]
-            }, { scales: { x: { stacked: true }, y: { stacked: true } } });
+            updateChart('chartFeedbackStack', 'bar', { labels: sortedExecs.map(n => n.split(' ')[0]), datasets: [{ label: 'Realizado', data: sortedExecs.map(e => execFeed[e].real), backgroundColor: colors.emerald }, { label: 'Pendiente', data: sortedExecs.map(e => execFeed[e].pend), backgroundColor: colors.rose }] }, { scales: { x: { stacked: true }, y: { stacked: true } } });
         }
 
         function updateChart(id, type, data, extraOptions = {}) {
             const ctx = document.getElementById(id).getContext('2d');
             if(chartInstances[id]) chartInstances[id].destroy();
-            
-            const baseOptions = { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { 
-                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-                    datalabels: {
-                        color: '#fff', font: { weight: 'bold' },
-                        display: function(context) { return context.dataset.data[context.dataIndex] > 0; } // Solo mostrar si > 0
-                    }
-                } 
-            };
-            
-            // Merge options
+            const baseOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', font: { weight: 'bold' }, display: function(context) { return context.dataset.data[context.dataIndex] > 0; } } } };
             const finalOptions = { ...baseOptions, ...extraOptions };
             if(extraOptions.plugins) finalOptions.plugins = { ...baseOptions.plugins, ...extraOptions.plugins };
-            
-            const plugins = [ChartDataLabels]; 
-            chartInstances[id] = new Chart(ctx, { type: type, data: data, options: finalOptions, plugins: plugins });
+            chartInstances[id] = new Chart(ctx, { type: type, data: data, options: finalOptions, plugins: [ChartDataLabels] });
         }
 
         function renderTopList(elementId, countsObj, textClass, bgClass) {
@@ -690,16 +628,9 @@
             sorted.forEach(([key, count]) => { ul.innerHTML += `<li class="flex justify-between items-center border-b border-slate-100 pb-1 last:border-0"><span class="font-bold text-[10px] text-slate-600 truncate w-3/4" title="${key}">${key}</span><span class="${bgClass} ${textClass} px-2 py-0.5 rounded-full font-black text-[10px]">${count}</span></li>`; });
         }
 
-        // --- ORDENAMIENTO TABLA ---
         function sortTable(col) {
-            if(currentSortCol === col) currentSortAsc = !currentSortAsc; 
-            else { currentSortCol = col; currentSortAsc = true; }
-            
-            // Si hay un filtro activo por tarjeta, ordenamos esa data, si no la global
-            let targetData = (activeTableFilter) ? 
-                             (activeTableFilter === 'PEC' ? FILTERED_DATA.filter(d=>parseFloat(d.NOTA.replace('%',''))===0) : FILTERED_DATA.filter(d=>d.SUPERVISOR===activeTableFilter))
-                             : FILTERED_DATA;
-
+            if(currentSortCol === col) currentSortAsc = !currentSortAsc; else { currentSortCol = col; currentSortAsc = true; }
+            let targetData = activeTableFilter ? (activeTableFilter === 'PEC' ? FILTERED_DATA.filter(d=>parseFloat(d.NOTA.replace('%',''))===0) : FILTERED_DATA.filter(d=>d.SUPERVISOR===activeTableFilter)) : FILTERED_DATA;
             targetData.sort((a,b) => {
                 let valA, valB;
                 if (col === 'CODIGO') { valA = a.CODIGO; valB = b.CODIGO; }
@@ -707,7 +638,6 @@
                 else if (col === 'SUPERVISOR') { valA = a.SUPERVISOR; valB = b.SUPERVISOR; }
                 else if (col === 'FECHA') { valA = new Date(a.FECHA_LLAMADA || a.FECHA); valB = new Date(b.FECHA_LLAMADA || b.FECHA); }
                 else if (col === 'NOTA') { valA = parseFloat(a.NOTA.replace('%','')); valB = parseFloat(b.NOTA.replace('%','')); }
-                
                 if (valA < valB) return currentSortAsc ? -1 : 1;
                 if (valA > valB) return currentSortAsc ? 1 : -1;
                 return 0;
@@ -715,7 +645,6 @@
             renderTableCustom(targetData); 
         }
 
-        // Función auxiliar para renderizar datos custom (filtrados por click)
         function renderTableCustom(customData) {
             const tb=document.getElementById('mainTable'); tb.innerHTML="";
             customData.forEach(d=>{
@@ -728,82 +657,39 @@
         function renderTable(){ renderTableCustom(FILTERED_DATA); }
 
         function showDetail(d){
-            let itemsHtml = "";
-            let tieneQuiebres = false;
-
+            let itemsHtml = ""; let tieneQuiebres = false;
             if (d.DETALLE) {
                 Object.entries(d.DETALLE).forEach(([k,v])=>{
                     if(v==='NO') {
                         tieneQuiebres = true;
-                        const isPec = ["SEG_", "COND_", "OP_", "SIST_"].some(pre => k.startsWith(pre));
                         const nombreReal = INDICADORES_MAP[k] || k;
-                        const badge = isPec ? '<span class="bg-red-100 text-red-600 px-1 rounded text-[9px] font-bold">PEC</span>' : '<span class="bg-orange-100 text-orange-600 px-1 rounded text-[9px] font-bold">PENC</span>';
-                        
-                        let safeName = nombreReal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        let regex = new RegExp(`•\\s*${safeName}.*?:\\s*(.*?)(?:\\n|$)`, 'i');
-                        let match = d.OBS.match(regex);
-                        let obsSpec = match && match[1].trim() ? `<div class="mt-1 text-[10px] text-slate-500 italic pl-2 border-l border-slate-300">"${match[1].trim()}"</div>` : '';
-
-                        itemsHtml += `<li class="text-xs text-slate-600 mb-2 border-b border-slate-50 pb-2"><div class="flex items-center justify-between"><span>${nombreReal}</span> ${badge}</div>${obsSpec}</li>`;
+                        const badge = ["SEG_", "COND_", "OP_", "SIST_"].some(pre => k.startsWith(pre)) ? '<span class="bg-red-100 text-red-600 px-1 rounded text-[9px] font-bold">PEC</span>' : '<span class="bg-orange-100 text-orange-600 px-1 rounded text-[9px] font-bold">PENC</span>';
+                        itemsHtml += `<li class="text-xs text-slate-600 mb-2 border-b border-slate-50 pb-2"><div class="flex items-center justify-between"><span>${nombreReal}</span> ${badge}</div></li>`;
                     }
                 });
             }
-            if(!tieneQuiebres) itemsHtml = '<li class="text-emerald-500 italic text-center py-2">✨ Felicitaciones, sin errores.</li>';
-
-            let audioSection = "";
-            if (d.AUDIO_URL && d.AUDIO_URL.length > 5) {
-                audioSection = `<div class="bg-slate-100 p-2 rounded border border-slate-200 mb-3"><p class="text-[9px] font-bold text-slate-400 uppercase mb-1"><i class="fas fa-play-circle"></i> Audio Llamada</p><audio controls src="${d.AUDIO_URL}" class="w-full h-8"></audio></div>`;
-            } else {
-                audioSection = `<div class="bg-gray-50 p-2 rounded border border-gray-200 mb-3 text-center text-xs text-gray-400 italic">Audio no disponible</div>`;
-            }
-
-            let feedHtml = d.FEEDBACK_STATUS === 'REALIZADO' ? `<div class="mt-3 bg-indigo-50 p-2 rounded border border-indigo-100"><p class="text-[9px] font-bold text-indigo-500 uppercase mb-1"><i class="fas fa-check-circle"></i> Feedback Realizado</p><p class="text-xs text-indigo-800 italic">"${d.FEEDBACK_TXT || ''}"</p></div>` : `<div class="mt-3 bg-orange-50 p-2 rounded border border-orange-100 text-center"><p class="text-[10px] font-bold text-orange-500 uppercase">Feedback Pendiente ⏳</p></div>`;
-
-            const rutPac = d.RUT_PACIENTE || 'No registrado';
-
+            if(!tieneQuiebres) itemsHtml = '<li class="text-emerald-500 italic text-center py-2">✨ Sin errores.</li>';
             Swal.fire({
-                title: `<div class="text-left"><span class="text-xs text-slate-400 uppercase">Detalle Evaluación</span><br>${d.NOMBRE}</div>`,
-                html: `
-                    <div class="text-left">
-                        <div class="flex justify-between items-center mb-4">
-                            <div><span class="block text-[9px] font-bold text-slate-400 uppercase">RUT Paciente</span><div class="flex items-center gap-2"><span class="font-mono text-xs font-bold bg-slate-100 px-2 rounded">${rutPac}</span><button onclick="copiarRut('${rutPac}')" class="text-indigo-500 hover:text-indigo-700" title="Copiar"><i class="fas fa-copy"></i></button></div></div>
-                            <div class="text-right"><span class="text-6xl font-black ${parseFloat(d.NOTA)>=85?'text-emerald-500':(parseFloat(d.NOTA)===0?'text-red-500':'text-amber-500')} tracking-tighter leading-none">${d.NOTA}</span><span class="block text-[9px] text-slate-300 font-bold uppercase">Nota Final</span></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded mb-3 border border-slate-100">
-                            <div><b>Fecha:</b> ${d.FECHA_LLAMADA}</div>
-                            <div><b>Auditor:</b> ${d.AUDITOR_REAL||'Admin'}</div>
-                        </div>
-                        ${audioSection}
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Quiebres:</p>
-                        <ul class="max-h-32 overflow-y-auto mb-3">${itemsHtml}</ul>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Observación:</p>
-                        <p class="text-xs italic bg-slate-50 p-2 rounded">${d.OBS.split('---')[0]}</p>
-                        ${feedHtml}
-                    </div>`,
+                title: `<div class="text-left"><span class="text-xs text-slate-400 uppercase">Detalle</span><br>${d.NOMBRE}</div>`,
+                html: `<div class="text-left"><div class="flex justify-between items-center mb-4"><div><span class="block text-[9px] font-bold text-slate-400 uppercase">RUT Paciente</span><span class="font-mono text-xs font-bold bg-slate-100 px-2 rounded">${d.RUT_PACIENTE || 'N/A'}</span></div><div class="text-right"><span class="text-6xl font-black ${parseFloat(d.NOTA)>=85?'text-emerald-500':(parseFloat(d.NOTA)===0?'text-red-500':'text-amber-500')}">${d.NOTA}</span></div></div><div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2 rounded mb-3 border border-slate-100"><div><b>Fecha:</b> ${d.FECHA_LLAMADA}</div><div><b>Auditor:</b> ${d.AUDITOR_REAL||'Admin'}</div></div><p class="text-[10px] font-bold text-slate-400 uppercase">Quiebres:</p><ul class="max-h-32 overflow-y-auto mb-3">${itemsHtml}</ul><p class="text-[10px] font-bold text-slate-400 uppercase">Observación:</p><p class="text-xs italic bg-slate-50 p-2 rounded">${d.OBS}</p></div>`,
                 width: '500px', showConfirmButton: false, showCloseButton: true
             });
         }
-
-        function copiarRut(rut) { navigator.clipboard.writeText(rut).then(() => Swal.showValidationMessage('RUT Copiado')); }
 
         function renderApelaciones(data) {
             const cont = document.getElementById('contApelaciones');
             const apels = data.filter(d => d.APELACION_ESTADO && d.APELACION_ESTADO !== "");
             cont.innerHTML = "";
-            if(apels.length === 0) { cont.innerHTML = `<div class="text-center py-10 bg-white rounded-xl border border-slate-200"><i class="fas fa-check-circle text-4xl text-emerald-200 mb-2"></i><p class="text-slate-400 font-bold text-sm">No hay apelaciones pendientes.</p></div>`; return; }
+            if(apels.length === 0) { cont.innerHTML = `<div class="text-center py-10 bg-white rounded-xl border border-slate-200"><p class="text-slate-400 font-bold text-sm">No hay apelaciones.</p></div>`; return; }
             apels.forEach(d => {
-                const isPend = d.APELACION_ESTADO === 'PENDIENTE';
-                const statusBadge = isPend ? '<span class="bg-pink-100 text-pink-600 px-2 py-1 rounded text-[10px] font-bold animate-pulse">PENDIENTE</span>' : `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold">${d.APELACION_ESTADO}</span>`;
-                cont.innerHTML += `<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 ${isPend ? 'border-pink-500' : 'border-slate-300'} relative"><div class="flex justify-between items-start mb-3"><div><h4 class="font-bold text-slate-700">${d.NOMBRE}</h4><p class="text-[10px] text-slate-400 uppercase font-bold">${d.FECHA_LLAMADA} • Nota: ${d.NOTA}</p></div>${statusBadge}</div><div class="bg-pink-50 p-3 rounded-lg border border-pink-100 mb-3"><p class="text-[10px] font-bold text-pink-400 uppercase mb-1"><i class="fas fa-comment-alt"></i> Argumento:</p><p class="text-xs text-slate-700 italic">"${d.APELACION_TXT}"</p></div><div class="flex justify-end gap-2"><button onclick="showDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})" class="text-xs text-slate-500 font-bold px-3 py-2 bg-slate-50 rounded border hover:bg-slate-100">Ver Auditoría</button>${isPend ? `<a href="https://wa.me/?text=Hola ${d.NOMBRE}, sobre tu apelación..." target="_blank" class="text-xs bg-emerald-500 text-white font-bold px-3 py-2 rounded hover:bg-emerald-600 flex items-center gap-2"><i class="fab fa-whatsapp"></i> Responder</a>` : ''}</div></div>`;
+                cont.innerHTML += `<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 relative"><div class="flex justify-between items-start mb-3"><div><h4 class="font-bold text-slate-700">${d.NOMBRE}</h4><p class="text-[10px] text-slate-400 uppercase font-bold">Nota: ${d.NOTA}</p></div></div><div class="bg-pink-50 p-3 rounded-lg border border-pink-100 mb-3"><p class="text-xs text-slate-700 italic">"${d.APELACION_TXT}"</p></div></div>`;
             });
         }
 
         function exportarExcel() { 
-            const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(FILTERED_DATA); 
-            XLSX.utils.book_append_sheet(wb, ws, "Reporte_QA"); XLSX.writeFile(wb, "Reporte_Calidad.xlsx");
+            const ws = XLSX.utils.json_to_sheet(FILTERED_DATA);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "QA"); XLSX.writeFile(wb, "Reporte_Calidad.xlsx");
         }
     </script>
 </body>
 </html>
-
-
