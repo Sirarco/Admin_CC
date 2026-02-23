@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador de Calidad Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 20px; background-color: #f0f7fb; color: #4a5c6d; }
+        .container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 8px 24px rgba(114, 153, 186, 0.12); max-width: 1450px; margin: auto; border: 1px solid #e1eff8; }
+        h2, h3 { color: #6ba4d8; border-bottom: 2px solid #eef6fb; padding-bottom: 10px; margin-top: 0; font-weight: 600; }
+        
+        .tabs { display: flex; gap: 8px; margin-bottom: 0; border-bottom: 3px solid #6ba4d8; }
+        .tab-btn { padding: 12px 25px; cursor: pointer; border: none; background: #e6f2fa; border-radius: 10px 10px 0 0; font-weight: bold; color: #6ba4d8; transition: all 0.3s ease; }
+        .tab-btn:hover { background: #d3e8f7; }
+        .tab-btn.active { background: #6ba4d8; color: white; }
+        .tab-content { padding: 20px; border: 1px solid #e1eff8; border-top: none; background: white; border-radius: 0 0 12px 12px; min-height: 400px; }
+        
+        .header-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; background: #f8fbfe; padding: 18px; border-radius: 12px; border: 1px solid #e1eff8; }
+        input, select { padding: 10px; border-radius: 8px; border: 1px solid #cce1f0; font-size: 0.9em; width: 100%; box-sizing: border-box; background-color: #fcfdfe; color: #4a5c6d; transition: border-color 0.3s; }
+        input:focus, select:focus { outline: none; border-color: #6ba4d8; box-shadow: 0 0 0 3px rgba(107, 164, 216, 0.2); }
+        
+        .table-container { overflow-x: auto; margin-top: 15px; max-height: 600px; overflow-y: auto; border-radius: 8px; border: 1px solid #e1eff8; }
+        table { border-collapse: collapse; width: 100%; font-size: 12px; }
+        th, td { border: 1px solid #e1eff8; padding: 12px 10px; text-align: center; }
+        th { background-color: #8cbdec; color: white; position: sticky; top: 0; z-index: 10; font-weight: 600; letter-spacing: 0.5px; }
+        tr:nth-child(even) { background-color: #fafcfe; }
+        tr:hover { background-color: #f0f7fb; }
+        
+        .search-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; background: #f8fbfe; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e1eff8; }
+        .obs-cell { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; color: #6ba4d8; font-style: italic; position: relative; }
+        
+        .badge { padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8em; letter-spacing: 0.5px; }
+        .badge-good { background: #dff0d8; color: #3c763d; }
+        .badge-mid { background: #fcf8e3; color: #8a6d3b; }
+        .badge-bad { background: #f2dede; color: #a94442; }
+        
+        .btn-cat { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #e1eff8; cursor: pointer; margin: 0 4px; display: inline-block; transition: transform 0.2s; }
+        .btn-cat:hover { transform: scale(1.1); }
+        .active-bad { background: #e89b9b !important; border-color: #d9534f !important; }
+        .active-mid { background: #f5d38f !important; border-color: #f0ad4e !important; }
+        .active-good { background: #a2d2a2 !important; border-color: #5cb85c !important; }
+        
+        .btn-action { padding: 10px 20px; background: #8cbdec; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(107, 164, 216, 0.3); }
+        .btn-action:hover { background: #6ba4d8; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(107, 164, 216, 0.4); }
+        .btn-excel { background: #82c4a4; box-shadow: 0 2px 5px rgba(130, 196, 164, 0.3); }
+        .btn-excel:hover { background: #63b38c; }
+        
+        .btn-top { position: fixed; bottom: 30px; right: 30px; background: #8cbdec; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 20px; cursor: pointer; display: none; box-shadow: 0 4px 12px rgba(107, 164, 216, 0.4); z-index: 1000; transition: background 0.3s; }
+        .btn-top:hover { background: #6ba4d8; }
+        
+        .summary-box { background: #fefce8; border: 1px solid #fde073; padding: 18px; border-radius: 12px; margin: 15px 0; display: none; align-items: center; justify-content: space-between; color: #8a6d3b; }
+        .total-cell { font-weight: bold; background-color: #f8fbfe; color: #6ba4d8; }
+        
+        .row-selected { background-color: #fefce8 !important; transition: background-color 0.3s; border-left: 3px solid #fde073; }
+        .btn-copy { border: none; background: #e6f2fa; color: #6ba4d8; border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 12px; margin-left: 5px; transition: 0.2s; }
+        .btn-copy:hover { background: #6ba4d8; color: white; }
+        
+        .choices__inner { border-radius: 8px !important; border: 1px solid #cce1f0 !important; min-height: 44px; background-color: #fcfdfe !important; }
+        .choices__list--multiple .choices__item { background-color: #8cbdec !important; border: 1px solid #6ba4d8 !important; border-radius: 6px !important; color: white !important; }
+        .choices__input { color: #4a5c6d !important; }
+    </style>
+</head>
+<body>
+
+<button class="btn-top" id="btnTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
+
+<div class="container">
+    <h2>Control de Calidad de Observaciones</h2>
+
+    <div class="header-controls">
+        <div><label><b>1. Cargar Archivo CSV:</b></label><input type="file" id="csvFile" accept=".csv"></div>
+        <div><label>Fecha Desde:</label><input type="date" id="dateFrom"></div>
+        <div><label>Fecha Hasta:</label><input type="date" id="dateTo"></div>
+        <div style="display: flex; gap: 5px; align-items: flex-end;">
+            <button class="btn-action" style="padding: 10px; font-size: 0.85em; flex: 1;" onclick="setDateFilter('hoy')">Hoy</button>
+            <button class="btn-action" style="padding: 10px; font-size: 0.85em; flex: 1;" onclick="setDateFilter('ayer')">Ayer</button>
+            <button class="btn-action" style="padding: 10px; font-size: 0.85em; flex: 1;" onclick="setDateFilter('7dias')">7 Días</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" id="tab-U" onclick="switchTab('UNIFICADO')">Resumen General</button>
+        <button class="tab-btn" id="tab-B" onclick="switchTab('BUSCADOR')">🔍 Buscador Avanzado</button>
+    </div>
+
+    <div class="tab-content">
+        <div id="dashboardArea">
+            <div style="margin-bottom: 15px; background: #f8fbfe; padding: 18px; border-radius: 12px; border: 1px solid #e1eff8; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label style="font-weight: bold; color: #6ba4d8;">Filtrar Sentido:</label>
+                    <select id="dashSentido" onchange="renderDashboard()">
+                        <option value="">Todos</option>
+                        <option value="ENTRANTE">Entrantes</option>
+                        <option value="SALIENTE">Salientes</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: bold; color: #6ba4d8;">Filtrar Estado:</label>
+                    <select id="dashEstado" onchange="renderDashboard()">
+                        <option value="">Todos</option>
+                        <option value="ATENDIDA">Atendidas</option>
+                        <option value="NO-ATENDIDA">No Atendidas</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="statsContent"><p style="text-align: center; color: #999; padding: 50px;">Sube un archivo para procesar los indicadores.</p></div>
+        </div>
+
+        <div id="searchArea" style="display:none;">
+            <div style="margin-bottom: 15px; background: #f8fbfe; padding: 18px; border-radius: 12px; border: 1px solid #e1eff8;">
+                <label style="font-weight: bold; display: block; margin-bottom: 8px; color: #6ba4d8;">Agentes (Búsqueda múltiple):</label>
+                <select id="sAgente" multiple></select>
+            </div>
+            
+            <div class="search-grid">
+                <div><label>RUT:</label><input type="text" id="sRut" placeholder="Buscar RUT..."></div>
+                <div><label>Estado:</label><select id="sEstado"><option value="">Todos</option></select></div>
+                <div><label>Sentido:</label><select id="sSentido"><option value="">Todos</option><option value="Entrante">Entrante</option><option value="Saliente">Saliente</option></select></div>
+                <div><label>Duración Min (min):</label><input type="number" id="sDurMin" placeholder="0" step="0.1"></div>
+                <div><label>Duración Max (min):</label><input type="number" id="sDurMax" placeholder="999" step="0.1"></div>
+                <div><label>Tipificación:</label><select id="sEficiencia"><option value="todos">Mostrar todos</option><option value="eficientes">Eficientes</option></select></div>
+                <div style="display:flex; align-items:flex-end;"><button class="btn-action" style="width:100%" onclick="ejecutarBusqueda()">Buscar Llamadas</button></div>
+            </div>
+            <div id="summaryBox" class="summary-box">
+                <span><b>Seleccionados:</b> <span id="countSel">0</span> gestiones</span>
+                <div>
+                    <button class="btn-action btn-excel" onclick="exportarSeleccion()">Descargar Excel Seleccionados</button>
+                    <button class="btn-action" style="background:#e89b9b;" onclick="limpiarSeleccion()">Limpiar Selección</button>
+                </div>
+            </div>
+            <div id="searchResultTable" class="table-container"></div>
+            <button id="btnVerMasBusqueda" class="btn-load-more btn-action" style="display:none; margin: 20px auto;" onclick="verMasResultados()">Mostrar más</button>
+        </div>
+
+        <div id="detailArea" style="display:none; margin-top: 30px; border-top: 2px solid #e1eff8; padding-top: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h3 id="detailTitle" style="margin: 0;">Detalle de Gestiones</h3>
+                    <small id="detailCountInfo" style="color: #6ba4d8; font-weight: bold;"></small>
+                </div>
+                <button class="btn-action" onclick="renderDashboard()">Actualizar Score Superior ↑</button>
+            </div>
+            <div id="detailTableCont" class="table-container"></div>
+            <button id="btnVerMasDetalle" class="btn-load-more btn-action" style="display:none; margin: 20px auto;" onclick="verMasDetalle()">Cargar más</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const EX_TIP_UNIFICADO = ["ATENDIDA POR IVR", "CORTA LLAMADA", "BUZÓN DE VOZ", "NO CONTESTA", "N° NO EXISTE", "NUMERO EQUIVOCADO", "N° EQUIVOCADO", "TELÉFONO APAGADO", "CORTA LLAMADO", "Nº NO EXISTE", "NO EXISTE", "REINTENTAR", "NÚMERO EQUIVOCADO", "BUZON DE VOZ", "SIN N° VÁLIDO"].map(t => t.toUpperCase());
+    const EX_TIP = ["ABANDONA PACIENTE", "ATENDIDA POR IVR", "CORTA LLAMADA", "BUZÓN DE VOZ", "NO CONTESTA", "N° NO EXISTE", "NUMERO EQUIVOCADO", "N° EQUIVOCADO", "TELÉFONO APAGADO", "CORTA LLAMADO", "Nº NO EXISTE", "NO EXISTE", "REINTENTAR", "NÚMERO EQUIVOCADO", "BUZON DE VOZ", "SIN N° VÁLIDO"].map(t => t.toUpperCase());
+    const EX_AGE = ["AGENTE IVR", "AGENTE IA"];
+
+    const KP_AGENTES = [
+        { id: "CC024", part1: "VILLALON", part2: "ANDREINA" },
+        { id: "CC023", part1: "HIDALGO", part2: "OSCAR" },
+        { id: "CC022", part1: "RODRIGUEZ", part2: "LORENA" },
+        { id: "CC021", part1: "GALLEGUILLOS", part2: "ANGELICA" },
+        { id: "CC020", part1: "BRUGES", part2: "MIRIAM" },
+        { id: "CC019", part1: "FERNANDEZ", part2: "CRISTOBAL" },
+        { id: "CC018", part1: "GARAY", part2: "CARLA" },
+        { id: "CC017", part1: "YANEZ", part2: "JORGE" },
+        { id: "CC016", part1: "NUÑEZ", part2: "PAZ" },
+        { id: "CC015", part1: "CEA", part2: "DIEGO" },
+        { id: "CC014", part1: "OSSANDON", part2: "EDITH" },
+        { id: "CC013", part1: "HERRERA", part2: "JOHANNA" },
+        { id: "CC012", part1: "AGUDELO", part2: "LESLI" },
+        { id: "CC011", part1: "CRISTINA", part2: "BARON" }, 
+        { id: "CC010", part1: "GONZALEZ", part2: "YESSENIA" },
+        { id: "CC009", part1: "HERRERA", part2: "PAOLA" },
+        { id: "CC008", part1: "MANZANILLA", part2: "ADRIAN" },
+        { id: "CC007", part1: "FARIA", part2: "MARIA" }, 
+        { id: "CC006", part1: "PAÉZ", part2: "SAYMAR" },
+        { id: "CC005", part1: "CÁCERES", part2: "KATYA" },
+        { id: "CC004", part1: "BELIS", part2: "BELFRED" },
+        { id: "CC024", part1: "JOANNA", part2: "ROJAS" }
+    ];
+
+    let baseData = [];
+    let currentMode = 'UNIFICADO';
+    let filteredSearch = [];
+    let selectedRows = new Set();
+    let limitSearch = 25;
+    let limitDetail = 25;
+    let manualGrades = {}; 
+    let currentDetailAgente = "";
+    let sortStats = { key: 'Agente', dir: 1 };
+    
+    let choicesInstance = null;
+
+    window.onscroll = () => { document.getElementById('btnTop').style.display = window.scrollY > 400 ? 'block' : 'none'; };
+
+    document.getElementById('dateFrom').addEventListener('change', renderDashboard);
+    document.getElementById('dateTo').addEventListener('change', renderDashboard);
+
+    function formatLocalISO(date) {
+        const offset = date.getTimezoneOffset();
+        date = new Date(date.getTime() - (offset*60*1000));
+        return date.toISOString().split('T')[0];
+    }
+
+    function setDateFilter(type) {
+        const today = new Date();
+        let from = new Date();
+        let to = new Date();
+        
+        if (type === 'ayer') {
+            from.setDate(today.getDate() - 1);
+            to.setDate(today.getDate() - 1);
+        } else if (type === '7dias') {
+            to.setDate(today.getDate() - 1);
+            from.setDate(today.getDate() - 7);
+        }
+        
+        document.getElementById('dateFrom').value = formatLocalISO(from);
+        document.getElementById('dateTo').value = formatLocalISO(to);
+        renderDashboard();
+    }
+
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        Papa.parse(file, {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                baseData = results.data.map((r, i) => {
+                    let cleaned = {};
+                    Object.keys(r).forEach(k => cleaned[k.trim()] = r[k] ? r[k].trim() : "");
+                    cleaned._id = i;
+                    
+                    if (cleaned.Agente) {
+                        const upperAgente = cleaned.Agente.toUpperCase();
+                        const cleanStr = upperAgente.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        const match = KP_AGENTES.find(kp => 
+                            cleanStr.includes(kp.part1.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) && 
+                            cleanStr.includes(kp.part2.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+                        );
+                        cleaned.ID_Agente = match ? match.id : "-";
+                    } else {
+                        cleaned.ID_Agente = "-";
+                    }
+                    return cleaned;
+                });
+
+                let fechasEncontradas = baseData.map(r => (r.Fecha || "").split(' ')[0]).filter(d => d);
+                if (fechasEncontradas.length > 0) {
+                    fechasEncontradas.sort();
+                    document.getElementById('dateFrom').value = fechasEncontradas[0];
+                    document.getElementById('dateTo').value = fechasEncontradas[fechasEncontradas.length - 1];
+                }
+
+                poblarFiltros();
+                renderDashboard();
+            }
+        });
+    });
+
+    function poblarFiltros() {
+        const agentes = [...new Set(baseData.map(r => r.Agente))].filter(a => a).sort();
+        const estados = [...new Set(baseData.map(r => r.Estado))].filter(e => e).sort();
+        
+        const selectElement = document.getElementById('sAgente');
+        selectElement.innerHTML = agentes.map(a => `<option value="${a}" selected>${a}</option>`).join('');
+        
+        if (choicesInstance) choicesInstance.destroy();
+        choicesInstance = new Choices(selectElement, {
+            removeItemButton: true,
+            placeholderValue: 'Seleccione agentes...',
+            searchPlaceholderValue: 'Buscar agente...'
+        });
+
+        document.getElementById('sEstado').innerHTML = '<option value="">Todos</option>' + estados.map(e => `<option value="${e}">${e}</option>`).join('');
+    }
+
+    function switchTab(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + (mode === 'BUSCADOR' ? 'B' : 'U')).classList.add('active');
+        document.getElementById('dashboardArea').style.display = (mode === 'BUSCADOR') ? 'none' : 'block';
+        document.getElementById('searchArea').style.display = (mode === 'BUSCADOR') ? 'block' : 'none';
+        document.getElementById('detailArea').style.display = 'none';
+        if (mode !== 'BUSCADOR') renderDashboard();
+    }
+
+    function hmsToSeconds(hms) {
+        if (!hms || !hms.includes(':')) return 0;
+        const parts = hms.split(':');
+        return (+parts[0]) * 3600 + (+parts[1]) * 60 + (+parts[2]);
+    }
+
+    function getAutoGrade(row) {
+        const obs = row.Observación || "";
+        const tip = (row.Tipificacion || "").toUpperCase();
+        const nombrePac = (row.Nombre || "").toLowerCase();
+        if (obs === "") return 'vacio';
+        if (obs.length < 20 || obs.toUpperCase() === tip || obs.toLowerCase() === nombrePac) return 'malo';
+        return 'bueno';
+    }
+
+    function getCalidadFinal(row) {
+        if (manualGrades[row._id]) return manualGrades[row._id];
+        return getAutoGrade(row);
+    }
+
+    function renderDashboard() {
+        if (!baseData.length) return;
+        const dF = document.getElementById('dateFrom').value;
+        const dT = document.getElementById('dateTo').value;
+        const dSen = document.getElementById('dashSentido').value;
+        const dEst = document.getElementById('dashEstado').value;
+        const stats = {};
+        const fechasSet = new Set();
+
+        let totalServicio = 0;
+        let utilesServicio = 0;
+
+        baseData.forEach(r => {
+            const f = (r.Fecha || "").split(' ')[0];
+            const est = (r.Estado || "").toUpperCase();
+            const sen = (r.Sentido || "").toUpperCase();
+            const age = r.Agente;
+            const id_age = r.ID_Agente;
+            const tip = (r.Tipificacion || "").toUpperCase();
+
+            if (dF && f < dF) return;
+            if (dT && f > dT) return;
+            
+            const isExcluido = EX_AGE.some(ex => age.toUpperCase().includes(ex));
+            const matchSen = dSen === "" || sen === dSen;
+            const matchEst = dEst === "" || est === dEst;
+
+            if (matchSen && matchEst && !isExcluido && !EX_TIP_UNIFICADO.includes(tip) && age !== "") {
+                if (!stats[age]) stats[age] = { ID: id_age, Agente: age, total: 0, utiles: 0, vacios: {}, malos: {}, sumaVacios: 0, sumaMalos: 0 };
+                fechasSet.add(f);
+                stats[age].total++;
+                totalServicio++;
+                const cal = getCalidadFinal(r);
+                if (cal === 'vacio') {
+                    stats[age].vacios[f] = (stats[age].vacios[f] || 0) + 1;
+                    stats[age].sumaVacios++;
+                } else if (cal === 'malo' || cal === 'mid') {
+                    stats[age].malos[f] = (stats[age].malos[f] || 0) + 1;
+                    stats[age].sumaMalos++;
+                } else {
+                    stats[age].utiles++;
+                    utilesServicio++;
+                }
+            }
+        });
+
+        const sortedFechas = [...fechasSet].sort();
+        const content = document.getElementById('statsContent');
+        content.innerHTML = "";
+        content.appendChild(crearTablaResumen("1. Campos VACÍOS", stats, sortedFechas, 'vacios', 'sumaVacios'));
+        content.appendChild(crearTablaResumen("2. Observaciones POCO ÚTILES", stats, sortedFechas, 'malos', 'sumaMalos'));
+        
+        const rankingDiv = document.createElement('div');
+        rankingDiv.innerHTML = `<h3>3. Ranking de Calidad General <button class="btn-action btn-excel" style="float:right;" onclick="exportarExcel('rankingTable')">Descargar Excel</button></h3>`;
+        
+        const promGlobal = totalServicio > 0 ? (utilesServicio / totalServicio * 100).toFixed(1) : 0;
+        const colorGlobal = promGlobal >= 90 ? 'badge-good' : (promGlobal >= 70 ? 'badge-mid' : 'badge-bad');
+        let globalHtml = `<div style="background:#f8fbfe; border: 2px solid #e1eff8; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; color: #4a5c6d;">
+            <span style="font-size: 1.2em; font-weight: bold;">Promedio General del Servicio: </span>
+            <span class="badge ${colorGlobal}" style="font-size: 1.2em;">${promGlobal}%</span>
+        </div>`;
+
+        const rList = Object.values(stats).map(i => ({ id: i.ID, a: i.Agente, p: i.total > 0 ? (i.utiles / i.total * 100).toFixed(1) : 0, u: i.utiles, t: i.total }))
+                      .sort((a,b) => b.p - a.p);
+        
+        let rHtml = '<div style="display:grid; gap:12px;"><table id="rankingTable" style="display:none"><thead><tr><th>ID</th><th>Agente</th><th>Calidad</th><th>Utiles</th><th>Total</th></tr></thead><tbody>';
+        rList.forEach(i => {
+            rHtml += `<tr><td>${i.id}</td><td>${i.a}</td><td>${i.p}%</td><td>${i.u}</td><td>${i.t}</td></tr>`;
+        });
+        rHtml += '</tbody></table>';
+        rList.forEach(i => {
+            const color = i.p >= 90 ? 'badge-good' : (i.p >= 70 ? 'badge-mid' : 'badge-bad');
+            rHtml += `<div style="display:flex; justify-content:space-between; background:white; padding:15px; border-radius:8px; border:1px solid #e1eff8; align-items:center;">
+                        <span class="agent-name" style="color:#4a5c6d; cursor:pointer;" onclick="verDetalle('${i.a}')"><b style="color:#6ba4d8;">${i.id}</b> &nbsp;|&nbsp; ${i.a}</span>
+                        <span class="badge ${color}">${i.p}% (${i.u}/${i.t})</span>
+                      </div>`;
+        });
+        rankingDiv.innerHTML += globalHtml + rHtml + '</div>';
+        content.appendChild(rankingDiv);
+    }
+
+    function crearTablaResumen(titulo, stats, fechas, key, sumaKey) {
+        const div = document.createElement('div');
+        const idTable = "table_" + key;
+        div.innerHTML = `<h3>${titulo} <button class="btn-action btn-excel" style="float:right;" onclick="exportarExcel('${idTable}')">Descargar Excel</button></h3><br><br>`;
+        let h = `<div class="table-container"><table id="${idTable}"><thead><tr><th class="sortable" onclick="ordenarStats('${key}', 'ID')">ID</th><th class="sortable" onclick="ordenarStats('${key}', 'Agente')">Agente</th>`;
+        fechas.forEach(f => h += `<th class="sortable" onclick="ordenarStats('${key}', '${f}')">${f}</th>`);
+        h += `<th class="sortable" onclick="ordenarStats('${key}', '${sumaKey}')">Total</th></tr></thead><tbody>`;
+        
+        const sortedStats = Object.values(stats).sort((a,b) => {
+            let valA = (sortStats.key === 'Agente') ? a.Agente : ((sortStats.key === 'ID') ? a.ID : (a[key][sortStats.key] || a[sortStats.key] || 0));
+            let valB = (sortStats.key === 'Agente') ? b.Agente : ((sortStats.key === 'ID') ? b.ID : (b[key][sortStats.key] || b[sortStats.key] || 0));
+            return (valA > valB ? 1 : -1) * sortStats.dir;
+        });
+
+        let maxDaily = 0; let maxTotal = 0;
+        sortedStats.forEach(a => {
+            fechas.forEach(f => maxDaily = Math.max(maxDaily, a[key][f] || 0));
+            maxTotal = Math.max(maxTotal, a[sumaKey] || 0);
+        });
+
+        sortedStats.forEach(a => {
+            h += `<tr><td style="color:#6ba4d8; font-weight:bold;">${a.ID}</td><td class="agent-name" style="cursor:pointer;" onclick="verDetalle('${a.Agente}')">${a.Agente}</td>`;
+            fechas.forEach(f => {
+                let v = a[key][f] || 0;
+                let bg = (v > 0 && maxDaily > 0) ? `background-color: rgba(232, 155, 155, ${0.1 + (v/maxDaily)*0.8});` : '';
+                h += `<td style="${bg}">${v}</td>`;
+            });
+            let t = a[sumaKey] || 0;
+            let bgT = (t > 0 && maxTotal > 0) ? `background-color: rgba(232, 155, 155, ${0.2 + (t/maxTotal)*0.8});` : '';
+            h += `<td class="total-cell" style="${bgT}">${t}</td></tr>`;
+        });
+        div.innerHTML += h + `</tbody></table></div><br>`;
+        return div;
+    }
+
+    function ordenarStats(key, col) {
+        sortStats.dir = (sortStats.key === col) ? sortStats.dir * -1 : 1;
+        sortStats.key = col;
+        renderDashboard();
+    }
+
+    function copiarRut(btn, rut) {
+        navigator.clipboard.writeText(rut);
+        btn.innerText = '✅';
+        setTimeout(() => btn.innerText = '📋', 1500);
+    }
+
+    function verDetalle(agente) {
+        currentDetailAgente = agente;
+        const dF = document.getElementById('dateFrom').value;
+        const dT = document.getElementById('dateTo').value;
+        const dSen = document.getElementById('dashSentido').value;
+        const dEst = document.getElementById('dashEstado').value;
+        detailedData = baseData.filter(r => {
+            const f = (r.Fecha || "").split(' ')[0];
+            const est = (r.Estado || "").toUpperCase();
+            const sen = (r.Sentido || "").toUpperCase();
+            const tip = (r.Tipificacion || "").toUpperCase();
+            
+            const matchSen = dSen === "" || sen === dSen;
+            const matchEst = dEst === "" || est === dEst;
+
+            return r.Agente === agente && matchEst && matchSen && (!dF || f >= dF) && (!dT || f <= dT) && !EX_TIP_UNIFICADO.includes(tip);
+        });
+        limitDetail = 25;
+        document.getElementById('detailArea').style.display = 'block';
+        document.getElementById('detailTitle').innerText = `Gestiones de: ${agente}`;
+        renderTablaDetalle();
+        document.getElementById('detailArea').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderTablaDetalle() {
+        const cont = document.getElementById('detailTableCont');
+        const slice = detailedData.slice(0, limitDetail);
+        
+        document.getElementById('detailCountInfo').innerText = `(Mostrando ${slice.length} de ${detailedData.length} registros)`;
+
+        let h = `<button class="btn-action btn-excel" style="margin-bottom:15px;" onclick="exportarExcel('detailTableRef')">Descargar Detalle Excel</button>`;
+        h += `<table id="detailTableRef"><thead><tr><th>ID</th><th>Agente</th><th>Fecha</th><th>Rut</th><th>Nombre</th><th>Tipificación</th><th>Obs</th><th>Criterio Auto</th><th>Calidad (Corregir)</th></tr></thead><tbody>`;
+        slice.forEach(r => {
+            const auto = getAutoGrade(r);
+            const manual = manualGrades[r._id] || '';
+            const badgeAuto = auto === 'bueno' ? 'badge-good' : 'badge-bad';
+            const textAuto = auto === 'bueno' ? 'Útil' : (auto === 'vacio' ? 'Vacío' : 'Poco Útil');
+            
+            const finalGrade = manual || auto;
+            const rowColor = finalGrade === 'bueno' ? '#f4faf6' : (finalGrade === 'mid' ? '#fdf8ec' : '#fdf2f2');
+
+            h += `<tr style="background-color: ${rowColor}">
+                <td style="color:#6ba4d8; font-weight:bold;">${r.ID_Agente}</td><td>${r.Agente}</td><td>${r.Fecha}</td>
+                <td style="white-space:nowrap;">${r.Rut||'-'} ${r.Rut ? `<button class="btn-copy" onclick="copiarRut(this, '${r.Rut}')" title="Copiar RUT">📋</button>` : ''}</td>
+                <td>${r.Nombre}</td><td>${r.Tipificacion}</td>
+                <td class="obs-cell" title="${r.Observación}">${r.Observación || '-'}</td>
+                <td><span class="badge ${badgeAuto}">${textAuto}</span></td>
+                <td>
+                    <button class="btn-cat cat-bad ${manual==='malo'?'active-bad':''}" onclick="setGrade(${r._id}, 'malo')"></button>
+                    <button class="btn-cat cat-mid ${manual==='mid'?'active-mid':''}" onclick="setGrade(${r._id}, 'mid')"></button>
+                    <button class="btn-cat cat-good ${manual==='bueno'?'active-good':''}" onclick="setGrade(${r._id}, 'bueno')"></button>
+                </td>
+            </tr>`;
+        });
+        cont.innerHTML = h + `</tbody></table>`;
+        document.getElementById('btnVerMasDetalle').style.display = detailedData.length > limitDetail ? 'block' : 'none';
+    }
+
+    function setGrade(id, g) { manualGrades[id] = g; renderTablaDetalle(); }
+    function verMasDetalle() { limitDetail += 50; renderTablaDetalle(); }
+    
+    function exportarExcel(id) { 
+        const table = document.getElementById(id);
+        const wb = XLSX.utils.table_to_book(table);
+        XLSX.writeFile(wb, `Reporte_${id}.xlsx`);
+    }
+
+    function ejecutarBusqueda() {
+        const selectAgente = document.getElementById('sAgente');
+        const selectedAgents = Array.from(selectAgente.selectedOptions).map(opt => opt.value.toLowerCase());
+        
+        const sRut = document.getElementById('sRut').value.toLowerCase();
+        const est = document.getElementById('sEstado').value;
+        const sen = document.getElementById('sSentido').value;
+        const eficiencia = document.getElementById('sEficiencia').value;
+        
+        const minVal = parseFloat(document.getElementById('sDurMin').value);
+        const maxVal = parseFloat(document.getElementById('sDurMax').value);
+        const min = isNaN(minVal) ? 0 : minVal * 60;
+        const max = isNaN(maxVal) ? 999999 : maxVal * 60;
+        
+        const dF = document.getElementById('dateFrom').value;
+        const dT = document.getElementById('dateTo').value;
+
+        filteredSearch = baseData.filter(r => {
+            const f = (r.Fecha || "").split(' ')[0];
+            const dur = hmsToSeconds(r['Tiempo de Llamada']);
+            const tip = (r.Tipificacion || "").toUpperCase();
+
+            if (eficiencia === 'eficientes' && EX_TIP.includes(tip)) return false;
+
+            const agenteMatch = selectedAgents.length === 0 || selectedAgents.some(a => (r.Agente || "").toLowerCase().includes(a));
+            const rutMatch = !sRut || (r.Rut && r.Rut.toLowerCase().includes(sRut));
+
+            return agenteMatch && rutMatch && (!est || r.Estado === est) &&
+                   (!sen || r.Sentido === sen) && (dur >= min && dur <= max) &&
+                   (!dF || f >= dF) && (!dT || f <= dT);
+        });
+        limitSearch = 25; mostrarResultadosBusqueda();
+    }
+
+    function mostrarResultadosBusqueda() {
+        const cont = document.getElementById('searchResultTable');
+        const slice = filteredSearch.slice(0, limitSearch);
+        let h = `<table id="searchTable"><thead><tr><th>Sel</th><th>Fecha</th><th>Rut</th><th>Nombre</th><th>ID</th><th>Agente</th><th>Tipificación</th><th>Duración</th><th>Obs</th></tr></thead><tbody>`;
+        slice.forEach(r => {
+            const checked = selectedRows.has(r._id) ? 'checked' : '';
+            const rowClass = selectedRows.has(r._id) ? 'row-selected' : '';
+            h += `<tr class="${rowClass}"><td><input type="checkbox" ${checked} onchange="toggleFila(${r._id})"></td>
+                  <td>${r.Fecha}</td><td style="white-space:nowrap;">${r.Rut||'-'}</td><td>${r.Nombre}</td><td style="color:#6ba4d8; font-weight:bold;">${r.ID_Agente}</td><td>${r.Agente}</td><td>${r.Tipificacion}</td>
+                  <td>${r['Tiempo de Llamada']}</td><td class="obs-cell" title="${r.Observación}">${r.Observación || '-'}</td></tr>`;
+        });
+        cont.innerHTML = h + `</tbody></table>`;
+        document.getElementById('btnVerMasBusqueda').style.display = filteredSearch.length > limitSearch ? 'block' : 'none';
+    }
+
+    function toggleFila(id) {
+        if(id !== -1) selectedRows.has(id) ? selectedRows.delete(id) : selectedRows.add(id);
+        document.getElementById('summaryBox').style.display = selectedRows.size > 0 ? 'flex' : 'none';
+        document.getElementById('countSel').innerText = selectedRows.size;
+        mostrarResultadosBusqueda();
+    }
+    
+    function exportarSeleccion() {
+        if (selectedRows.size === 0) {
+            alert("No hay registros seleccionados.");
+            return;
+        }
+        const datosLimpios = baseData
+            .filter(r => selectedRows.has(r._id))
+            .map(r => {
+                let rowExport = { ...r };
+                delete rowExport._id;
+                return rowExport;
+            });
+
+        const ws = XLSX.utils.json_to_sheet(datosLimpios);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Seleccion");
+        XLSX.writeFile(wb, "Seleccion_Llamadas.xlsx");
+    }
+
+    function limpiarSeleccion() { selectedRows.clear(); toggleFila(-1); mostrarResultadosBusqueda(); }
+    function verMasResultados() { limitSearch += 50; mostrarResultadosBusqueda(); }
+</script>
+</body>
+</html>
