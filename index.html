@@ -249,6 +249,9 @@
     <div id="tabApelaciones" class="hidden flex-1 overflow-y-auto p-6 bg-slate-100">
         <div class="max-w-5xl mx-auto"><h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center"><i class="fas fa-gavel text-pink-500 mr-2"></i> Gestión de Apelaciones</h2><div id="contApelaciones" class="grid grid-cols-1 gap-4"><p class="text-center text-slate-400 py-10 italic">Cargando...</p></div></div>
     </div>
+    <div id="tabVacios" class="hidden flex-1 bg-slate-100 relative h-full">
+        <iframe src="vacios.html" class="w-full h-full border-0 absolute top-0 left-0"></iframe>
+    </div>
 
     <script>
         // ================= CONFIGURACIÓN =================
@@ -377,15 +380,21 @@
         });
 
         function cambiarTab(id){
-            ['tabIngreso','tabDashboard','tabApelaciones'].forEach(t=>document.getElementById(t).classList.add('hidden'));
+            // 1. Agregamos 'tabVacios' a la lista de ocultar
+            ['tabIngreso','tabDashboard','tabApelaciones','tabVacios'].forEach(t=>document.getElementById(t).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
             const showDocks = (id === 'tabIngreso');
             document.getElementById('auditTools').classList.toggle('hidden', !showDocks);
             document.getElementById('audioDock').classList.toggle('hidden', !showDocks);
             if(!showDocks) { document.getElementById('openToolsBtn').classList.add('hidden'); document.getElementById('openAudioBtn').classList.add('hidden'); }
-            ['navBtnIngreso', 'navBtnDash', 'navBtnApel'].forEach(b => { document.getElementById(b).classList.remove('active-tab'); document.getElementById(b).classList.add('opacity-60'); });
-            const activeBtn = id === 'tabIngreso' ? 'navBtnIngreso' : (id === 'tabDashboard' ? 'navBtnDash' : 'navBtnApel');
+            
+            // 2. Agregamos 'navBtnVacios' a la lista de botones
+            ['navBtnIngreso', 'navBtnDash', 'navBtnApel', 'navBtnVacios'].forEach(b => { document.getElementById(b).classList.remove('active-tab'); document.getElementById(b).classList.add('opacity-60'); });
+            
+            // 3. Agregamos la lógica para saber si el botón activo es el de Vacíos
+            const activeBtn = id === 'tabIngreso' ? 'navBtnIngreso' : (id === 'tabDashboard' ? 'navBtnDash' : (id === 'tabApelaciones' ? 'navBtnApel' : 'navBtnVacios'));
             const elActive = document.getElementById(activeBtn); elActive.classList.add('active-tab'); elActive.classList.remove('opacity-60');
+            
             if(id==='tabDashboard' || id==='tabApelaciones') { if(RAW_DATA.length > 0) { aplicarFiltros(); renderApelaciones(RAW_DATA); } else { loadData(); } }
         }
 
@@ -796,4 +805,5 @@
     </script>
 </body>
 </html>
+
 
