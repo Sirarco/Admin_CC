@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+.<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -223,11 +223,13 @@
         renderDashboard();
     }
 
-    document.getElementById('csvFile').addEventListener('change', function(e) {
+   document.getElementById('csvFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
         Papa.parse(file, {
-            header: true, skipEmptyLines: true,
+            header: true, 
+            skipEmptyLines: true,
+            encoding: "ISO-8859-1", // <--- ESTA LÍNEA ARREGLA LAS TILDES Y LA LECTURA DE OBSERVACIÓN
             complete: function(results) {
                 baseData = results.data.map((r, i) => {
                     let cleaned = {};
@@ -583,3 +585,4 @@
 </script>
 </body>
 </html>
+
