@@ -526,7 +526,7 @@
         XLSX.writeFile(wb, `Reporte_${id}.xlsx`);
     }
 
-    function ejecutarBusqueda() {
+function ejecutarBusqueda() {
         const selectAgente = document.getElementById('sAgente');
         const selectedAgents = Array.from(selectAgente.selectedOptions).map(opt => opt.value.toLowerCase());
         
@@ -536,8 +536,11 @@
         const eficiencia = document.getElementById('sEficiencia').value;
         const fHorario = document.getElementById('sHorario').value;
         
-        const minVal = parseFloat(document.getElementById('sDurMin').value);
+        // CORRECCIÓN: Validación por si sDurMin no existe en el HTML (Evita el crash)
+        const dMinObj = document.getElementById('sDurMin');
+        const minVal = dMinObj ? parseFloat(dMinObj.value) : 0; 
         const maxVal = parseFloat(document.getElementById('sDurMax').value);
+        
         const min = isNaN(minVal) ? 0 : minVal * 60;
         const max = isNaN(maxVal) ? 999999 : maxVal * 60;
         
@@ -626,3 +629,4 @@
 </script>
 </body>
 </html>
+
