@@ -336,7 +336,7 @@
             // Fetch Pauta de Calidad Asíncrono
             fetch("https://script.google.com/macros/s/AKfycbzEnzOn8TVN8xAX7do3tk1N2g3bD0lKh9EF5eh6T_I2yHFiPdeKDrM4RTwjG8f2uIzDJQ/exec")
                 .then(res => res.json())
-                .then(data => window.PAUTA_DATA = data)
+                .then(data => window.PAUTA_DATA = data.pauta)
                 .catch(e => console.error("Error cargando pauta", e));
 
             // Hacer cajas arrastrables
@@ -766,4 +766,5 @@
     </script>
 </body>
 </html>
+
 
