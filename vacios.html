@@ -119,11 +119,12 @@
                 <select id="sAgente" multiple></select>
             </div>
             
-            <div class="search-grid">
+<div class="search-grid">
                 <div><label>RUT:</label><input type="text" id="sRut" placeholder="Buscar RUT..."></div>
                 <div><label>Estado:</label><select id="sEstado"><option value="">Todos</option></select></div>
                 <div><label>Sentido:</label><select id="sSentido"><option value="">Todos</option><option value="Entrante">Entrante</option><option value="Saliente">Saliente</option></select></div>
                 <div><label>Horario:</label><select id="sHorario"><option value="">Todos</option><option value="AM">AM (07:30 - 12:00)</option><option value="MEDIODIA">Mediodía (12:00 - 14:00)</option><option value="PM">PM (14:00 - 19:00)</option></select></div>
+                <div><label>Duración Min (min):</label><input type="number" id="sDurMin" placeholder="0" step="0.1"></div>
                 <div><label>Duración Max (min):</label><input type="number" id="sDurMax" placeholder="999" step="0.1"></div>
                 <div><label>Tipificación:</label><select id="sEficiencia"><option value="todos">Mostrar todos</option><option value="eficientes">Eficientes</option></select></div>
                 <div style="display:flex; align-items:flex-end;"><button class="btn-action" style="width:100%" onclick="ejecutarBusqueda()">Buscar Llamadas</button></div>
@@ -534,12 +535,13 @@ function ejecutarBusqueda() {
         const est = document.getElementById('sEstado').value;
         const sen = document.getElementById('sSentido').value;
         const eficiencia = document.getElementById('sEficiencia').value;
-        const fHorario = document.getElementById('sHorario').value;
+        const fHorario = document.getElementById('sHorario') ? document.getElementById('sHorario').value : "";
         
-        // CORRECCIÓN: Validación por si sDurMin no existe en el HTML (Evita el crash)
+        // Se leen correctamente ambos campos de duración (Min y Max)
         const dMinObj = document.getElementById('sDurMin');
         const minVal = dMinObj ? parseFloat(dMinObj.value) : 0; 
-        const maxVal = parseFloat(document.getElementById('sDurMax').value);
+        const dMaxObj = document.getElementById('sDurMax');
+        const maxVal = dMaxObj ? parseFloat(dMaxObj.value) : 999;
         
         const min = isNaN(minVal) ? 0 : minVal * 60;
         const max = isNaN(maxVal) ? 999999 : maxVal * 60;
@@ -551,7 +553,9 @@ function ejecutarBusqueda() {
             const f = (r.Fecha || "").split(' ')[0];
             const dur = hmsToSeconds(r['Tiempo de Llamada']);
             const tip = (r.Tipificacion || "").toUpperCase();
-            const tagH = getHorarioInfo(r.Fecha).tag;
+            
+            // Validar si la función de horario existe, de lo contrario devuelve "OTRO"
+            const tagH = typeof getHorarioInfo === "function" ? getHorarioInfo(r.Fecha).tag : "OTRO";
 
             if (eficiencia === 'eficientes' && EX_TIP.includes(tip)) return false;
             
@@ -629,4 +633,5 @@ function ejecutarBusqueda() {
 </script>
 </body>
 </html>
+
 
