@@ -730,6 +730,7 @@
         }
 
         // Script para hacer las ventanas movibles (Arrastrables)
+// Script para hacer las ventanas movibles (Arrastrables) - CORREGIDO
         function makeDraggable(elementId, headerId) {
             var elmnt = document.getElementById(elementId);
             var header = document.getElementById(headerId);
@@ -740,6 +741,12 @@
             function dragMouseDown(e) {
                 e = e || window.event; e.preventDefault();
                 pos3 = e.clientX; pos4 = e.clientY;
+                
+                // Anula la transición de CSS y la posición 'right' que bloquean el movimiento fluido
+                elmnt.style.transition = "none";
+                elmnt.style.right = "auto"; 
+                elmnt.style.bottom = "auto";
+                
                 document.onmouseup = closeDragElement;
                 document.onmousemove = elementDrag;
             }
@@ -750,8 +757,13 @@
                 elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
                 elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
             }
-            function closeDragElement() { document.onmouseup = null; document.onmousemove = null; }
+            function closeDragElement() { 
+                // Devuelve la transición suave al soltar el mouse
+                elmnt.style.transition = ""; 
+                document.onmouseup = null; document.onmousemove = null; 
+            }
         }
     </script>
 </body>
 </html>
+
