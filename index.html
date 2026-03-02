@@ -34,7 +34,7 @@
         .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
 
         /* Docks */
-        .dock-panel { transition: all 0.3s ease; backdrop-filter: blur(10px); transform: scale(1.15); }
+        .dock-panel { transition: all 0.3s ease; backdrop-filter: blur(10px); transform: scale(1.15); position: absolute; }
         .counter-row { @apply flex justify-between items-center border-b border-gray-200/50 pb-2 mb-2 last:border-0 last:mb-0 last:pb-0; }
 
         /* Estilos Filtro Sticky */
@@ -68,17 +68,17 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-slate-700 bg-slate-50 relative" id="mainBody">
 
-    <div id="audioDock" class="dock-panel fixed left-8 top-24 w-72 bg-white/95 border border-slate-200 shadow-2xl rounded-xl z-[60] flex flex-col transform origin-top-left hidden">
-        <div class="bg-indigo-900 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move"><span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-headphones mr-2"></i>Player QA</span><button onclick="toggleDock('audioDock','openAudioBtn')" class="hover:text-indigo-300"><i class="fas fa-minus"></i></button></div>
-        <div class="p-4 bg-slate-50 rounded-b-xl border-t border-slate-100">
+    <div id="audioDock" class="dock-panel left-8 top-24 w-96 bg-white/95 border border-slate-200 shadow-2xl rounded-xl z-[60] flex flex-col hidden">
+        <div id="audioHeader" class="bg-indigo-900 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move"><span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-headphones mr-2"></i>Player QA</span><button onclick="toggleDock('audioDock','openAudioBtn')" class="hover:text-indigo-300"><i class="fas fa-minus"></i></button></div>
+        <div class="p-4 bg-slate-50 rounded-b-xl border-t border-slate-100 w-full">
             <audio id="mainAudioPlayer" controls class="w-full h-10 mb-2"></audio>
             <div class="grid grid-cols-3 gap-2"><button onclick="setSpeed(1.0)" class="bg-slate-200 text-slate-600 py-1 rounded text-xs font-bold">1.0x</button><button onclick="setSpeed(1.5)" class="bg-slate-200 text-slate-600 py-1 rounded text-xs font-bold">1.5x</button><button onclick="setSpeed(2.0)" class="bg-slate-200 text-slate-600 py-1 rounded text-xs font-bold">2.0x</button></div>
         </div>
     </div>
     <button id="openAudioBtn" onclick="toggleDock('audioDock','openAudioBtn')" class="fixed left-0 top-32 bg-indigo-900 text-white p-3 rounded-r-lg shadow-lg z-50 hover:bg-indigo-800 transition hidden"><i class="fas fa-chevron-right"></i></button>
 
-    <div id="auditTools" class="dock-panel fixed right-8 top-24 w-72 bg-white/95 border border-slate-200 shadow-2xl rounded-xl z-[60] flex flex-col hidden transform origin-top-right">
-        <div class="bg-slate-800 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move"><span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-tools mr-2"></i>Herramientas</span><button onclick="toggleDock('auditTools','openToolsBtn')" class="hover:text-emerald-400"><i class="fas fa-minus"></i></button></div>
+    <div id="auditTools" class="dock-panel right-8 top-24 w-72 bg-white/95 border border-slate-200 shadow-2xl rounded-xl z-[60] flex flex-col hidden">
+        <div id="toolsHeader" class="bg-slate-800 text-white p-3 rounded-t-xl flex justify-between items-center cursor-move"><span class="text-xs font-bold uppercase tracking-wider"><i class="fas fa-tools mr-2"></i>Herramientas</span><button onclick="toggleDock('auditTools','openToolsBtn')" class="hover:text-emerald-400"><i class="fas fa-minus"></i></button></div>
         <div class="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
             <div class="bg-slate-50 p-3 rounded border border-slate-200">
                 <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Pegar Fecha Sistema</p>
@@ -89,8 +89,22 @@
             </div>
             <div class="bg-slate-50 p-3 rounded border border-slate-200 text-center"><div class="text-3xl font-mono font-black text-slate-700 mb-2" id="timerDisplay">00:00</div><div class="flex justify-center gap-2"><button onclick="startTimer()" class="bg-emerald-500 text-white w-8 h-8 rounded"><i class="fas fa-play text-xs"></i></button><button onclick="pauseTimer()" class="bg-amber-400 text-white w-8 h-8 rounded"><i class="fas fa-pause text-xs"></i></button><button onclick="resetTimer()" class="bg-slate-400 text-white w-8 h-8 rounded"><i class="fas fa-undo text-xs"></i></button></div></div>
             <div class="bg-slate-50 p-3 rounded border border-slate-200">
-                <div class="counter-row"><p class="text-[10px] font-bold uppercase">Muletillas</p><div class="flex items-center gap-2"><span class="font-black text-indigo-600 w-6 text-center text-sm" id="cntMuletillas">0</span><button onclick="countUp('cntMuletillas')" class="bg-indigo-100 text-indigo-600 w-6 h-6 rounded font-bold text-xs">+</button></div></div>
-                <div class="counter-row"><p class="text-[10px] font-bold uppercase">Personaliz.</p><div class="flex items-center gap-2"><span class="font-black text-emerald-600 w-6 text-center text-sm" id="cntPerso">0</span><button onclick="countUp('cntPerso')" class="bg-emerald-100 text-emerald-600 w-6 h-6 rounded font-bold text-xs">+</button></div></div>
+                <div class="counter-row">
+                    <p class="text-[10px] font-bold uppercase">Muletillas</p>
+                    <div class="flex items-center gap-1">
+                        <button onclick="countDown('cntMuletillas')" class="bg-indigo-100 text-indigo-600 w-6 h-6 rounded font-bold text-xs">-</button>
+                        <span class="font-black text-indigo-600 w-6 text-center text-sm" id="cntMuletillas">0</span>
+                        <button onclick="countUp('cntMuletillas')" class="bg-indigo-100 text-indigo-600 w-6 h-6 rounded font-bold text-xs">+</button>
+                    </div>
+                </div>
+                <div class="counter-row">
+                    <p class="text-[10px] font-bold uppercase">Personaliz.</p>
+                    <div class="flex items-center gap-1">
+                        <button onclick="countDown('cntPerso')" class="bg-emerald-100 text-emerald-600 w-6 h-6 rounded font-bold text-xs">-</button>
+                        <span class="font-black text-emerald-600 w-6 text-center text-sm" id="cntPerso">0</span>
+                        <button onclick="countUp('cntPerso')" class="bg-emerald-100 text-emerald-600 w-6 h-6 rounded font-bold text-xs">+</button>
+                    </div>
+                </div>
             </div>
             <div>
                 <div class="flex justify-between mb-1"><span class="text-[10px] font-bold text-slate-400 uppercase">Notas</span><div class="flex gap-2"><button onclick="copyNotes()" class="text-[10px] text-blue-500 hover:underline">Copiar</button><button onclick="clearNotes()" class="text-[10px] text-red-400 hover:underline">Limpiar</button></div></div>
@@ -277,7 +291,6 @@
             {nombre:"María Farías Quintero", codigo:"CC0851", sup:"Carla Cabrera", serv:"Mesa Central"},
             {nombre:"Saymar Paéz García", codigo:"CC1992", sup:"Carla Cabrera", serv:"FDS"},
             {nombre:"Belfred Belis Mijares", codigo:"CC8219", sup:"Aracely Torres", serv:"FDS"},
-            // Supervisores y Admin (Se mantienen para productividad)
             {nombre:"Carla Cabrera Lara", codigo:"S5388", sup:"Aracely Torres", serv:"HLF"},
             {nombre:"Aracely Torres Faúndez", codigo:"S7637", sup:"Aracely Torres", serv:"HLF"},
             {nombre:"Luis Cataldo Galaz", codigo:"S2065", sup:"Aracely Torres", serv:"HLF"},
@@ -320,9 +333,16 @@
             document.getElementById('auditTools').classList.remove('hidden'); 
             document.getElementById('audioDock').classList.remove('hidden'); 
             
-            const footer = document.querySelector('footer p');
-            if(footer) footer.innerHTML = `Desarrollado por <a href="mailto:marco.lara.vera@gmail.com" class="text-indigo-400 hover:text-indigo-300 hover:underline transition">Marco Lara</a> • Iniciativa de innovación 2026`;
-            
+            // Fetch Pauta de Calidad Asíncrono
+            fetch("https://script.google.com/macros/s/AKfycbzEnzOn8TVN8xAX7do3tk1N2g3bD0lKh9EF5eh6T_I2yHFiPdeKDrM4RTwjG8f2uIzDJQ/exec")
+                .then(res => res.json())
+                .then(data => window.PAUTA_DATA = data)
+                .catch(e => console.error("Error cargando pauta", e));
+
+            // Hacer cajas arrastrables
+            makeDraggable('audioDock', 'audioHeader');
+            makeDraggable('auditTools', 'toolsHeader');
+
             cambiarTab('tabIngreso'); 
         };
 
@@ -343,6 +363,7 @@
         function pauseTimer() { clearInterval(timerInterval); timerInterval=null; }
         function resetTimer() { pauseTimer(); seconds=0; document.getElementById('timerDisplay').innerText="00:00"; }
         function countUp(id) { const e=document.getElementById(id); e.innerText=parseInt(e.innerText)+1; }
+        function countDown(id) { const e=document.getElementById(id); let v=parseInt(e.innerText); if(v>0) e.innerText=v-1; }
         function copyNotes() { const t=document.getElementById('tempNotes'); navigator.clipboard.writeText(t.value); }
         function clearNotes() { document.getElementById('tempNotes').value = ""; }
         function calcSemana() { const f=document.getElementById('fechaLlamada').value; if(f) document.getElementById('inputSemana').value="Semana "+Math.ceil(new Date(f).getDate()/7); }
@@ -358,11 +379,27 @@
             }
         }
 
+        function verPauta(indicador) {
+            if(!window.PAUTA_DATA || window.PAUTA_DATA.length === 0) return Swal.fire("Cargando...", "La pauta de calidad se está sincronizando con el servidor. Intenta en unos segundos.", "warning");
+            let data = window.PAUTA_DATA.find(x => JSON.stringify(x).toLowerCase().includes(indicador.toLowerCase()));
+            if(!data) return Swal.fire("Aviso", "No se encontró el detalle oficial para este indicador.", "info");
+            
+            let html = `<div class="text-left text-sm space-y-4">`;
+            Object.keys(data).forEach(k => {
+                if(k && data[k] && k !== "ID") {
+                    let color = k.toUpperCase().includes('NO') ? 'text-red-600' : (k.toUpperCase().includes('SI') ? 'text-emerald-600' : 'text-slate-700');
+                    html += `<div class="bg-slate-50 p-3 rounded border border-slate-100"><strong class="uppercase text-[10px] ${color} block mb-1">${k}:</strong><span class="italic text-slate-600 leading-relaxed">${data[k]}</span></div>`;
+                }
+            });
+            html += `</div>`;
+            Swal.fire({title: `<span class="text-indigo-600">${indicador}</span>`, html: html, width: '600px', showCloseButton: true, showConfirmButton: false});
+        }
+
         function renderFormTable() {
             const tb=document.getElementById('tablaItems'); tb.innerHTML=""; let lc="";
             pautaItems.forEach(i => {
                 if(i.cat!==lc){tb.innerHTML+=`<tr><td colspan="4" class="p-2 font-bold text-center ${i.cat==='PEC'?'text-red-600 bg-red-50':'text-blue-600 bg-blue-50'} border-y text-[10px] uppercase">${i.cat}</td></tr>`; lc=i.cat;}
-                tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="p-2 relative"><div class="tooltip-container"><span class="font-bold text-slate-700 text-[10px] border-b border-dotted border-slate-400 cursor-help">${i.label}</span><span class="tooltip-text">${i.tip}</span></div></td><td class="p-2 text-center"><select name="${i.name}" class="w-full border rounded p-1 text-[10px] font-bold ${i.cat==='PEC'?'critical':'weighted'}" data-w="${i.w||0}" onchange="updateRow(this)"><option value="SI" selected>SI</option><option value="NO">NO</option></select></td><td class="p-2 text-center status-cell"><span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span></td><td class="p-2"><input class="desc-input hidden w-full border border-red-300 rounded p-1 text-[10px]" placeholder="Detalle..."></td></tr>`;
+                tb.innerHTML+=`<tr class="hover:bg-slate-50 border-b border-slate-100"><td class="p-2 relative flex items-center gap-2"><div class="tooltip-container"><span class="font-bold text-slate-700 text-[10px] border-b border-dotted border-slate-400 cursor-help">${i.label}</span><span class="tooltip-text">${i.tip}</span></div><i class="fas fa-book-open text-indigo-400 cursor-pointer hover:text-indigo-600 text-xs" onclick="verPauta('${i.label}')" title="Ver Criterios Cumple/No Cumple"></i></td><td class="p-2 text-center"><select name="${i.name}" class="w-full border rounded p-1 text-[10px] font-bold ${i.cat==='PEC'?'critical':'weighted'}" data-w="${i.w||0}" onchange="updateRow(this)"><option value="SI" selected>SI</option><option value="NO">NO</option></select></td><td class="p-2 text-center status-cell"><span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span></td><td class="p-2"><input class="desc-input hidden w-full border border-red-300 rounded p-1 text-[10px]" placeholder="Detalle..."></td></tr>`;
             });
         }
         function updateRow(s) { const r=s.closest('tr'), sc=r.querySelector('.status-cell'), i=r.querySelector('.desc-input'); i.classList.add('hidden'); if(s.value==='SI') sc.innerHTML='<span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span>'; else if(s.value==='NO') { sc.innerHTML='<span class="text-red-600 font-bold bg-red-50 px-1 rounded text-[9px]">NO</span>'; i.classList.remove('hidden'); i.focus(); } else sc.innerHTML='-'; calcScore(); }
@@ -371,14 +408,18 @@
         document.getElementById('auditForm').addEventListener('submit',function(e){
             e.preventDefault(); const b=document.getElementById('btnGuardar'), ot=b.innerHTML;
             if(!document.getElementById('inputCodigo').value) return Swal.fire("Error","Selecciona ejecutivo","warning");
-            b.innerHTML='GUARDANDO...'; b.disabled=true;
+            
+            Swal.fire({ title: 'Guardando Evaluación...', html: 'Sincronizando con base de datos.', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+            b.disabled=true;
+
             document.getElementById('fechaAuditoria').value=new Date().toISOString().split('T')[0];
             let obs=document.querySelector('[name="comentario"]').value, errs="";
             document.querySelectorAll('.desc-input').forEach(i=>{if(i.value)errs+=`\n• ${i.closest('tr').cells[0].innerText}: ${i.value}`});
             if(errs) document.querySelector('[name="comentario"]').value=obs+"\n--- DETALLE ---"+errs;
+            
             const fd=new FormData(this);
             fetch(API_URL,{method:'POST',body:JSON.stringify(Object.fromEntries(fd)),headers:{'Content-Type':'text/plain'}})
-            .then(()=>{Swal.fire("Listo","Guardado","success");this.reset();document.getElementById('totalScore').innerText="0%";resetTimer();b.innerHTML=ot;b.disabled=false;loadData();})
+            .then(()=>{Swal.fire("¡Éxito!", "Auditoría registrada correctamente.", "success");this.reset();document.getElementById('totalScore').innerText="0%";resetTimer();b.innerHTML=ot;b.disabled=false;loadData();})
             .catch(()=>{Swal.fire("Error","Fallo conexión","error");b.innerHTML=ot;b.disabled=false;});
         });
 
@@ -488,7 +529,6 @@
             const currentDate = new Date();
             const currentMonth = currentDate.toISOString().slice(0, 7);
             
-            // Cálculo de productividad por Auditor (Marco Lara y Supervisores)
             d.forEach(x => {
                 const auditor = x.AUDITOR_REAL || 'Admin';
                 if(!auditorCounts[auditor]) auditorCounts[auditor] = { total: 0, mes: 0, sem: 0 };
@@ -497,11 +537,9 @@
                 if(fecha.startsWith(currentMonth)) auditorCounts[auditor].mes++;
             });
 
-            // 1. Sups
             const sMap={}; d.forEach(x=>{if(!sMap[x.SUPERVISOR])sMap[x.SUPERVISOR]={t:0,g:0,p:0,pc:0,f:0}; let n=parseFloat(x.NOTA.replace('%',''))||0; sMap[x.SUPERVISOR].t++; sMap[x.SUPERVISOR].g+=n; if(n>0){sMap[x.SUPERVISOR].p+=n;sMap[x.SUPERVISOR].pc++} if(x.FEEDBACK_STATUS==='REALIZADO')sMap[x.SUPERVISOR].f++});
             const sc=document.getElementById('supervisorCards'); sc.innerHTML="";
 
-            // Tarjeta de Marco Lara (Productividad y Nota Global)
             const ns=d.map(x=>parseFloat(x.NOTA.replace('%',''))||0);
             const promGen = ns.length ? (ns.reduce((a,b)=>a+b,0)/ns.length).toFixed(0) : 0;
             const mlP = auditorCounts["Marco Lara"] || {total:0, mes:0};
@@ -689,6 +727,30 @@
         function exportarExcel() { 
             const ws = XLSX.utils.json_to_sheet(FILTERED_DATA);
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "QA"); XLSX.writeFile(wb, "Reporte_Calidad.xlsx");
+        }
+
+        // Script para hacer las ventanas movibles (Arrastrables)
+        function makeDraggable(elementId, headerId) {
+            var elmnt = document.getElementById(elementId);
+            var header = document.getElementById(headerId);
+            if (!elmnt || !header) return;
+            var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            header.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e = e || window.event; e.preventDefault();
+                pos3 = e.clientX; pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+            function elementDrag(e) {
+                e = e || window.event; e.preventDefault();
+                pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+                pos3 = e.clientX; pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+            function closeDragElement() { document.onmouseup = null; document.onmousemove = null; }
         }
     </script>
 </body>
