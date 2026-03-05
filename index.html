@@ -124,6 +124,7 @@
             <button onclick="cambiarTab('tabDashboard')" id="navBtnDash" class="nav-btn px-4 py-1.5 rounded text-white">Dashboard</button>
             <button onclick="cambiarTab('tabApelaciones')" id="navBtnApel" class="nav-btn px-4 py-1.5 rounded text-white">Apelaciones</button>
             <button onclick="cambiarTab('tabVacios')" id="navBtnVacios" class="nav-btn px-4 py-1.5 rounded text-white">Vacíos</button>
+            <button onclick="cambiarTab('tabCasos')" id="navBtnCasos" class="nav-btn px-4 py-1.5 rounded text-white">Casos</button>
         </div>
     </nav>
 
@@ -264,7 +265,9 @@
     <div id="tabVacios" class="hidden flex-1 bg-slate-100 h-full">
         <iframe src="vacios.html" class="w-full h-full border-0" style="min-height: calc(100vh - 64px);"></iframe>
     </div>
-
+<div id="tabCasos" class="hidden flex-1 bg-slate-100 h-full">
+        <iframe src="Casos.html" class="w-full h-full border-0" style="min-height: calc(100vh - 64px);"></iframe>
+    </div>
     <script>
         // ================= CONFIGURACIÓN =================
         const API_URL = "https://script.google.com/macros/s/AKfycbzGtnjzJeHSePkZ_0k_bt1hZcrYVjxIcV4_dekezLO815n7YPUlmCbt5QmvmwYcqyYheA/exec"; 
@@ -423,20 +426,29 @@
             .catch(()=>{Swal.fire("Error","Fallo conexión","error");b.innerHTML=ot;b.disabled=false;});
         });
 
-        function cambiarTab(id){
-            ['tabIngreso','tabDashboard','tabApelaciones','tabVacios'].forEach(t=>document.getElementById(t).classList.add('hidden'));
+function cambiarTab(id){
+            // 1. Ocultar todas las pestañas (Agregamos 'tabCasos')
+            ['tabIngreso','tabDashboard','tabApelaciones','tabVacios','tabCasos'].forEach(t=>document.getElementById(t).classList.add('hidden'));
+            
+            // Mostrar la seleccionada
             document.getElementById(id).classList.remove('hidden');
             const showDocks = (id === 'tabIngreso');
             document.getElementById('auditTools').classList.toggle('hidden', !showDocks);
             document.getElementById('audioDock').classList.toggle('hidden', !showDocks);
             if(!showDocks) { document.getElementById('openToolsBtn').classList.add('hidden'); document.getElementById('openAudioBtn').classList.add('hidden'); }
             
-            ['navBtnIngreso', 'navBtnDash', 'navBtnApel', 'navBtnVacios'].forEach(b => { 
+            // 2. Apagar todos los botones (Agregamos 'navBtnCasos')
+            ['navBtnIngreso', 'navBtnDash', 'navBtnApel', 'navBtnVacios', 'navBtnCasos'].forEach(b => { 
                 const el = document.getElementById(b);
                 if(el) { el.classList.remove('active-tab'); el.classList.add('opacity-60'); }
             });
             
-            const activeBtn = id === 'tabIngreso' ? 'navBtnIngreso' : (id === 'tabDashboard' ? 'navBtnDash' : (id === 'tabApelaciones' ? 'navBtnApel' : 'navBtnVacios'));
+            // 3. Encender el botón activo
+            const activeBtn = id === 'tabIngreso' ? 'navBtnIngreso' : 
+                              (id === 'tabDashboard' ? 'navBtnDash' : 
+                              (id === 'tabApelaciones' ? 'navBtnApel' : 
+                              (id === 'tabVacios' ? 'navBtnVacios' : 'navBtnCasos')));
+                              
             const elActive = document.getElementById(activeBtn);
             if(elActive) { elActive.classList.add('active-tab'); elActive.classList.remove('opacity-60'); }
             
@@ -766,5 +778,6 @@
     </script>
 </body>
 </html>
+
 
 
