@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataMed Master v1.9.1 - Fixed</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .highlight-part { background-color: #fef08a; font-weight: bold; padding: 0 2px; border-radius: 2px; color: #854d0e; }
+        .highlight-dialysis { background-color: #bfdbfe; font-weight: bold; padding: 0 2px; border-radius: 2px; color: #1e3a8a; }
+        /* Buscador Global: Verde Brillante / Rojo */
+        .highlight-search { background-color: #00FF00 !important; color: #FF0000 !important; font-weight: 900; padding: 0 2px; border: 1px solid #FF0000; }
+        
+        .alert-row { background-color: #fee2e2 !important; }
+        .alert-text { color: #dc2626; font-weight: bold; }
+        .rut-focus-alert { background-color: #fecaca !important; color: #991b1b !important; font-weight: 900; padding: 2px 6px; border-radius: 4px; border: 1px solid #ef4444; }
+        
+        .table-container { max-height: 60vh; overflow-y: auto; overflow-x: auto; }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; }
+        th { position: sticky; top: 0; background: #f8fafc; z-index: 20; white-space: nowrap; border-bottom: 2px solid #e2e8f0; cursor: pointer; }
+        
+        .col-description { min-width: 650px; max-width: 900px; font-size: 0.85rem; line-height: 1.5; color: #1e293b; }
+        .col-spec { min-width: 200px; font-weight: 700; color: #1d4ed8; }
+        
+        tr:hover { background-color: #f1f5f9 !important; }
+        .card-stat { cursor: pointer; transition: all 0.2s ease; border: 2px solid transparent; }
+        .card-stat:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .card-active { border-color: #3b82f6; background-color: #eff6ff; }
+        .column-hidden { display: none !important; }
+        
+        .btn-magic { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+        .btn-error { background-color: #dc2626; color: white; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+
+    <header class="bg-slate-900 text-white shadow-xl p-4 sticky top-0 z-40">
+        <div class="max-w-[1900px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg></div>
+                <h1 class="text-xl font-bold tracking-tight">DataMed Master <span class="text-blue-400 text-xs font-mono">v1.9.1</span></h1>
+            </div>
+            <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 flex items-center">
+                <input type="file" id="fileInput" accept=".xlsx" class="text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1900px] mx-auto p-4 md:p-6">
+        
+        <div id="dashboard" class="hidden grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">
+            <div id="card-rut" class="card-stat bg-white p-4 rounded-2xl shadow-sm border-l-4 border-red-500" onclick="toggleAlertFilter('rut')">
+                <p class="text-[9px] font-bold text-slate-400 uppercase">Alertas RUT Infantil</p>
+                <p id="stat-rut" class="text-2xl font-black text-slate-800">0</p>
+            </div>
+            <div id="card-trauma" class="card-stat bg-white p-4 rounded-2xl shadow-sm border-l-4 border-amber-500" onclick="toggleAlertFilter('trauma')">
+                <p class="text-[9px] font-bold text-slate-400 uppercase">Auditoría Trauma Adulto</p>
+                <p id="stat-trauma-ratio" class="text-2xl font-black text-slate-800">0/0</p>
+            </div>
+            <div id="card-dialysis" class="card-stat bg-white p-4 rounded-2xl shadow-sm border-l-4 border-blue-500" onclick="toggleAlertFilter('dialysis')">
+                <p class="text-[9px] font-bold text-slate-400 uppercase">Auditoría Diálisis</p>
+                <p id="stat-dialysis-ratio" class="text-2xl font-black text-slate-800">0/0</p>
+            </div>
+            <div id="card-critical" class="card-stat bg-white p-4 rounded-2xl shadow-sm border-l-4 border-purple-600" onclick="toggleAlertFilter('critical')">
+                <p class="text-[9px] font-bold text-slate-400 uppercase">Especialidades Críticas</p>
+                <p id="stat-critical" class="text-2xl font-black text-slate-800">0</p>
+            </div>
+            <div class="bg-slate-900 p-4 rounded-2xl shadow-sm text-white"><p class="text-[9px] font-bold text-slate-400 uppercase">Vista Actual</p><p id="stat-total" class="text-2xl font-black">0</p></div>
+        </div>
+
+        <div id="filtersPanel" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-wrap items-end gap-4">
+            <div class="flex-1 min-w-[180px]"><label class="block text-[10px] font-black text-slate-400 mb-1 uppercase">Especialidad</label><select id="filterSpecialty" class="w-full border-slate-200 border rounded-xl px-3 py-2.5 text-sm bg-slate-50 outline-none"></select></div>
+            <div class="flex-1 min-w-[180px]"><label class="block text-[10px] font-black text-slate-400 mb-1 uppercase">Creador</label><select id="filterCreator" class="w-full border-slate-200 border rounded-xl px-3 py-2.5 text-sm bg-slate-50 outline-none"></select></div>
+            <div class="w-40"><label class="block text-[10px] font-black text-slate-400 mb-1 uppercase">Fecha</label><input type="date" id="filterDate" class="w-full border-slate-200 border rounded-xl px-3 py-2.5 text-sm bg-slate-50 outline-none"></div>
+            <div class="flex-[1.5] min-w-[250px]"><label class="block text-[10px] font-black text-blue-600 mb-1 uppercase">Buscador Descripción (Fondo Verde)</label><input type="text" id="filterGlobal" placeholder="Escribe para resaltar..." class="w-full border-blue-200 border-2 rounded-xl px-3 py-2.5 text-sm bg-white outline-none"></div>
+            <div class="flex items-center gap-2">
+                <button id="btnMagic" class="btn-magic text-white px-4 py-2.5 rounded-xl font-black shadow-lg transition-all" title="D: Destacados">D</button>
+                <button id="btnError" class="btn-error px-4 py-2.5 rounded-xl font-black shadow-lg transition-all" title="F: Solo Errores">F</button>
+                <button id="btnToggleCols" class="bg-slate-100 text-slate-600 px-3 py-2.5 rounded-xl text-xs font-black border border-slate-200">EXTRAS</button>
+                <button id="btnDownload" class="bg-green-600 text-white px-3 py-2.5 rounded-xl text-xs font-black hover:bg-green-700 transition-all">EXCEL</button>
+                <button id="btnReset" class="p-2.5 text-red-500 bg-red-50 rounded-xl hover:bg-red-100 transition-all"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg></button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <div id="loader" class="hidden p-20 text-center font-bold text-slate-400 text-xs uppercase tracking-widest">Analizando...</div>
+            <div class="table-container"><table id="mainTable"><thead id="tableHeader" class="bg-slate-50"></thead><tbody id="tableBody" class="divide-y divide-slate-100"></tbody></table></div>
+        </div>
+    </main>
+
+    <script>
+        let db = [], viewData = [], headers = [], showExtraCols = false, currentSort = { key: null, dir: 'asc' }, activeFilter = null;
+
+        const BODY_PARTS = ['columna', 'pie', 'mano', 'hombro', 'muñeca', 'rodilla', 'cadera', 'codo', 'tobillo', 'dedo', 'pelvis', 'brazo', 'pierna', 'cuello', 'espalda', 'talon', 'planta', 'hueso', 'musculo', 'tendon', 'ligamento', 'escapula', 'vertebra', 'lumbar', 'sacro', 'cervical', 'pantorrilla', 'coxis', 'femur'];
+        const DIALYSIS_TERMS = ['no se dializa', 'se dializa', 'dializa', 'dializo', 'dialisis', 'hemodialisis', 'peritoneal', 'dializando', 'dialisa', 'fistula', 'fav', 'cateter', 'vascular', 'bypass'];
+        const DIALYSIS_SPECIALTIES = ['nefrologia infantil', 'nefrologia adulto', 'cirugia vascular periferica'];
+        const CRITICAL_SPECS = ['CIRUGIA Y TRAUMA MAXILOFACIAL', 'ONCOLOGÍA', 'PSIQUIATRIA ADULTO E INFANTIL (SALUD MENTAL)', 'NUTRICIONISTA INFANTIL', 'NUTRICIONISTA ADULTO', 'Salud Ocupacional', 'KINESIOLOGIA MFR', 'cuidados paliativos', 'HOSPITAL DE DÍA', 'ENDODONCIA', 'SERVICIO SOCIAL (ASISTENTE SOCIAL)', 'CRITERIOS CONTROL', 'HISTORICO', 'JUNTA MEDICA', 'HORMONOTERAPIA', 'ENFERMERA', 'UNIDAD PATOLOGICA CERVICAL', 'TERAPIA OCUPACIONAL', 'T TEMPOROMANDIBULAR Y DOLO ORO FACIAL', 'TACO', 'REHABBILITACION PROTESIS FIJAS Y REMOVIBLES', 'PERIODONCIA', 'ORTODONCIA', 'OPERATORIA', 'ODONTOPEDIATRIA', 'IMPLANTOLOGIA', 'FONOAUDIOLOGIA MFR', 'BRONCOPULMONAR INFANTIL'];
+        const EXTRA_COLS = ['Lista Espera', 'Resuelto', 'Informado'];
+
+        const normalize = (t) => t ? t.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
+        const getRutBody = (s) => {
+            let clean = s.toString().replace(/[^0-9kK]/g, '');
+            return clean.length > 1 ? parseInt(clean.slice(0, -1)) || 0 : 0;
+        };
+        const formatDate = (val) => {
+            if (!val || isNaN(Date.parse(val))) return val;
+            const d = new Date(val);
+            return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getFullYear()).slice(-2)}`;
+        };
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            document.getElementById('loader').classList.remove('hidden');
+            const r = new FileReader();
+            r.onload = (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+                db = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                if (db.length > 0) {
+                    const orig = Object.keys(db[0]);
+                    headers = ['Caso', 'Especialidad', 'tag_description', 'Rut'];
+                    orig.forEach(h => { if(!headers.includes(h)) headers.push(h); });
+                    populateUI(); processData();
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    document.getElementById('filtersPanel').classList.remove('hidden');
+                }
+                document.getElementById('loader').classList.add('hidden');
+            };
+            r.readAsArrayBuffer(file);
+        });
+
+        function populateUI() {
+            const crs = [...new Set(db.map(i => i['Creado Por']))].filter(Boolean).sort();
+            const sps = [...new Set(db.map(i => i['Especialidad']))].filter(Boolean).sort();
+            document.getElementById('filterCreator').innerHTML = '<option value="">Todos</option>' + crs.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('filterSpecialty').innerHTML = '<option value="">Todas</option>' + sps.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        function toggleAlertFilter(type) {
+            activeFilter = (activeFilter === type) ? null : type;
+            document.querySelectorAll('.card-stat, #btnMagic, #btnError').forEach(c => c.classList.remove('card-active', 'ring-4', 'ring-blue-400'));
+            if (activeFilter) {
+                const el = document.getElementById(type === 'magic' ? 'btnMagic' : (type === 'error' ? 'btnError' : `card-${type}`));
+                if(el) el.classList.add('ring-4', 'ring-blue-400');
+            }
+            processData();
+        }
+
+        function processData() {
+            const sV = document.getElementById('filterSpecialty').value, cV = document.getElementById('filterCreator').value, dV = document.getElementById('filterDate').value, gV = normalize(document.getElementById('filterGlobal').value);
+            
+            viewData = db.filter(row => {
+                const esp = normalize(row['Especialidad']), desc = normalize(row['tag_description']), rut = getRutBody(row['Rut']);
+                const isPed = esp.includes('infantil') || esp.includes('pediatri'), isTrau = esp.includes('traumatologia adulto'), isDia = DIALYSIS_SPECIALTIES.includes(esp), isCri = CRITICAL_SPECS.map(s => normalize(s)).includes(esp);
+                const hasPart = BODY_PARTS.some(p => desc.includes(normalize(p))), hasDia = DIALYSIS_TERMS.some(t => desc.includes(normalize(t)));
+                
+                const isRutAlrt = isPed && rut < 19000000 && rut > 0;
+                const isTrauAlrt = isTrau && !hasPart;
+                const isDiaAlrt = isDia && !hasDia;
+                const isFinalError = isRutAlrt || isTrauAlrt || isDiaAlrt || isCri;
+
+                const matchStd = (!sV || row['Especialidad'] === sV) && (!cV || row['Creado Por'] === cV) && (!gV || desc.includes(gV)) && (!dV || (row['Fecha Creación'] && new Date(row['Fecha Creación']).toISOString().split('T')[0] === dV));
+                if (!matchStd) return false;
+
+                if (activeFilter === 'rut') return isPed;
+                if (activeFilter === 'trauma') return isTrauAlrt;
+                if (activeFilter === 'dialysis') return isDiaAlrt;
+                if (activeFilter === 'critical') return isCri;
+                if (activeFilter === 'error') return isFinalError;
+                if (activeFilter === 'magic') return isFinalError || hasPart || hasDia;
+                return true;
+            });
+            render();
+        }
+
+        function highlight(text, list, className) {
+            if (!text) return "";
+            let html = text.toString();
+            [...list].sort((a,b) => b.length - a.length).forEach(term => {
+                if(!term || term.length < 2) return;
+                const pattern = term.replace(/[aá]/gi, '[aá]').replace(/[eé]/gi, '[eé]').replace(/[ií]/gi, '[ií]').replace(/[oó]/gi, '[oó]').replace(/[uú]/gi, '[uú]').replace(/[nñ]/gi, '[nñ]');
+                html = html.replace(new RegExp(`(${pattern})`, 'gi'), `<span class="${className}">$1</span>`);
+            });
+            return html;
+        }
+
+        function render() {
+            const tbody = document.getElementById('tableBody'), gS = document.getElementById('filterGlobal').value;
+            let s = { rut: 0, tNo: 0, tT: 0, dNo: 0, dT: 0, cr: 0 };
+            
+            document.getElementById('tableHeader').innerHTML = `<tr>${headers.map(h => `<th onclick="sort('${h}')" class="px-4 py-4 text-left text-[10px] font-black uppercase text-slate-400 ${EXTRA_COLS.includes(h) && !showExtraCols ? 'column-hidden' : ''}">${h} ${currentSort.key === h ? (currentSort.dir === 'asc' ? '↑' : '↓') : ''}</th>`).join('')}</tr>`;
+            
+            tbody.innerHTML = viewData.map(row => {
+                const esp = normalize(row['Especialidad']), desc = normalize(row['tag_description']), rut = getRutBody(row['Rut']);
+                let rC = "", rS = "", pD = row['tag_description'] || "";
+                const isPed = esp.includes('infantil') || esp.includes('pediatri'), isTrau = esp.includes('traumatologia adulto'), isDia = DIALYSIS_SPECIALTIES.includes(esp), isCri = CRITICAL_SPECS.map(x => normalize(x)).includes(esp);
+                const hasPart = BODY_PARTS.some(p => desc.includes(normalize(p))), hasDia = DIALYSIS_TERMS.some(t => desc.includes(normalize(t)));
+
+                if (isPed) { if(rut < 19000000 && rut > 0) { rC = "alert-row"; rS = "alert-text"; s.rut++; } if(activeFilter === 'rut') rS = "rut-focus-alert"; }
+                if (isTrau) { s.tT++; if(!hasPart) { rC = "alert-row"; s.tNo++; } }
+                if (esp.includes('trauma')) pD = highlight(pD, BODY_PARTS, 'highlight-part');
+                if (isDia) { s.dT++; if(!hasDia) { rC = "alert-row"; s.dNo++; } }
+                if (hasDia) pD = highlight(pD, DIALYSIS_TERMS, 'highlight-dialysis');
+                if (isCri) { s.cr++; rC = "alert-row"; }
+                if (gS && gS.length >= 2) pD = highlight(pD, [gS], 'highlight-search');
+
+                return `<tr class="${rC}">${headers.map(h => {
+                    let v = row[h], c = EXTRA_COLS.includes(h) && !showExtraCols ? 'column-hidden' : '';
+                    if (h.includes('Fecha')) v = formatDate(v);
+                    if (h === 'tag_description') { v = pD; c += ' col-description'; }
+                    if (h === 'Especialidad') c += ' col-spec';
+                    if (h === 'Rut') c += ` ${rS}`;
+                    return `<td class="px-4 py-3 border-b border-slate-100 ${c}">${v}</td>`;
+                }).join('')}</tr>`;
+            }).join('');
+            
+            document.getElementById('stat-rut').textContent = s.rut; 
+            document.getElementById('stat-trauma-ratio').textContent = `${s.tNo}/${s.tT}`; 
+            document.getElementById('stat-dialysis-ratio').textContent = `${s.dNo}/${s.dT}`; 
+            document.getElementById('stat-critical').textContent = s.cr; 
+            document.getElementById('stat-total').textContent = viewData.length;
+        }
+
+        function sort(k) { currentSort.dir = (currentSort.key === k && currentSort.dir === 'asc') ? 'desc' : 'asc'; currentSort.key = k; viewData.sort((a, b) => (a[k] > b[k] ? 1 : -1) * (currentSort.dir === 'asc' ? 1 : -1)); render(); }
+        
+        document.getElementById('btnReset').addEventListener('click', () => { 
+            document.querySelectorAll('select, input').forEach(i => i.value = ""); 
+            activeFilter = null; 
+            document.querySelectorAll('.card-stat, #btnMagic, #btnError').forEach(c => c.classList.remove('card-active', 'ring-4'));
+            processData(); 
+        });
+
+        document.getElementById('btnMagic').addEventListener('click', () => toggleAlertFilter('magic'));
+        document.getElementById('btnError').addEventListener('click', () => toggleAlertFilter('error'));
+        document.getElementById('btnToggleCols').addEventListener('click', () => { showExtraCols = !showExtraCols; render(); });
+        
+        document.getElementById('btnDownload').addEventListener('click', () => {
+            if(viewData.length === 0) return alert("No hay datos para descargar");
+            const ws = XLSX.utils.json_to_sheet(viewData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+            XLSX.writeFile(wb, `Auditoria_DataMed_${new Date().toISOString().split('T')[0]}.xlsx`);
+        });
+
+        ['filterSpecialty', 'filterCreator', 'filterDate', 'filterGlobal'].forEach(id => document.getElementById(id).addEventListener('input', processData));
+    </script>
+</body>
+</html>
