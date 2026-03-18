@@ -176,10 +176,17 @@
                 <button onclick="resetFiltros()" class="px-3 py-2 bg-slate-100 text-slate-500 rounded text-xs font-bold border border-slate-200 hover:bg-slate-200"><i class="fas fa-eraser"></i></button>
                 <button onclick="exportarExcel()" class="px-3 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 shadow flex items-center gap-2"><i class="fas fa-file-excel"></i> Excel</button>
             </div>
-            <div id="loadingIndicator" class="loader ml-2 hidden"></div>
+<div id="loadingIndicator" class="loader ml-2 hidden"></div>
         </div>
 
-        <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest mt-6">Rendimiento por Líder y Auditor</h3>
+        <div class="flex gap-2 my-4 border-b border-slate-200 pb-3">
+            <button onclick="switchDashView('GENERAL')" id="btnViewGeneral" class="px-4 py-2 bg-indigo-600 text-white rounded font-bold text-xs shadow transition">Dashboard General</button>
+            <button onclick="switchDashView('MENSUAL')" id="btnViewMensual" class="px-4 py-2 bg-slate-200 text-slate-500 hover:bg-slate-300 rounded font-bold text-xs transition">Reporte Mensual</button>
+        </div>
+
+        <div id="vistaDashGeneral">
+        
+        <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest mt-2">Rendimiento por Líder y Auditor</h3>
         <div id="supervisorCards" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"><div class="bg-slate-200 p-4 rounded-xl animate-pulse h-32"></div></div>
 
         <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 pl-1 tracking-widest">Métricas Globales</h3>
@@ -252,9 +259,21 @@
             </div>
         </div>
         
+</div> <div id="vistaReporteMensual" class="hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center gap-4">
+                <label class="text-[10px] font-bold text-slate-400 uppercase">Seleccionar Mes:</label>
+                <select id="fMesReporte" class="border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none w-48" onchange="renderReporteMensual()">
+                    <option value="">Cargando...</option>
+                </select>
+            </div>
+            
+            <div id="reporteDraggableArea" class="relative min-h-[1000px] w-full bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200">
+                </div>
+        </div>
+
         <div class="mt-8 mb-4 text-center opacity-30 hover:opacity-100 transition-opacity duration-500">
-            <p class="text-[9px] font-bold uppercase tracking-widest">Desarrollado por <span class="text-indigo-500">Tu Nombre</span></p>
-            <a href="mailto:tuemail@ejemplo.com" class="text-[8px] hover:text-indigo-500">Soporte</a>
+            <p class="text-[9px] font-bold uppercase tracking-widest">Desarrollado por <span class="text-indigo-500">Marco Lara</span></p>
+            <a href="marco.lara.vera@gmail.com" class="text-[8px] hover:text-indigo-500">Soporte</a>
         </div>
     </div>
 
@@ -538,6 +557,167 @@ function aplicarFiltros(){
         function resetFiltroTabla() {
             renderTable(); 
             document.getElementById('btnResetTabla').classList.add('hidden');
+        }
+
+function switchDashView(view) {
+            const vGen = document.getElementById('vistaDashGeneral');
+            const vMen = document.getElementById('vistaReporteMensual');
+            const bGen = document.getElementById('btnViewGeneral');
+            const bMen = document.getElementById('btnViewMensual');
+            
+            if(view === 'GENERAL') {
+                vGen.classList.remove('hidden'); vMen.classList.add('hidden');
+                bGen.className = "px-4 py-2 bg-indigo-600 text-white rounded font-bold text-xs shadow transition";
+                bMen.className = "px-4 py-2 bg-slate-200 text-slate-500 hover:bg-slate-300 rounded font-bold text-xs transition";
+            } else {
+                vGen.classList.add('hidden'); vMen.classList.remove('hidden');
+                bMen.className = "px-4 py-2 bg-indigo-600 text-white rounded font-bold text-xs shadow transition";
+                bGen.className = "px-4 py-2 bg-slate-200 text-slate-500 hover:bg-slate-300 rounded font-bold text-xs transition";
+                poblarMesesReporte();
+                renderReporteMensual();
+            }
+        }
+
+        function poblarMesesReporte() {
+            const select = document.getElementById('fMesReporte');
+            const meses = new Set();
+            RAW_DATA.forEach(d => {
+                let f = d.FECHA_LLAMADA || d.FECHA;
+                if(f && f.length >= 7) meses.add(f.substring(0,7));
+            });
+            const sortedMeses = Array.from(meses).sort().reverse();
+            const actualVal = select.value;
+            select.innerHTML = sortedMeses.map(m => `<option value="${m}">${m}</option>`).join('');
+            if(actualVal && sortedMeses.includes(actualVal)) select.value = actualVal;
+        }
+
+        function renderReporteMensual() {
+            const mesActual = document.getElementById('fMesReporte').value;
+            if(!mesActual) return;
+            
+            const meses = Array.from(new Set(RAW_DATA.map(d => (d.FECHA_LLAMADA||d.FECHA).substring(0,7)))).sort().reverse();
+            let idx = meses.indexOf(mesActual);
+            const mesAnterior = (idx >= 0 && idx + 1 < meses.length) ? meses[idx + 1] : null;
+
+            const dCur = RAW_DATA.filter(d => (d.FECHA_LLAMADA||d.FECHA).startsWith(mesActual));
+            const dPrev = mesAnterior ? RAW_DATA.filter(d => (d.FECHA_LLAMADA||d.FECHA).startsWith(mesAnterior)) : [];
+
+            const calcStats = (data) => {
+                let sum = 0, pecs = 0, total = data.length;
+                data.forEach(d => { let n = parseFloat(d.NOTA.replace('%','')) || 0; sum += n; if(n === 0) pecs++; });
+                return { avg: total ? (sum/total).toFixed(1) : 0, pecs, total };
+            };
+
+            const statsCur = calcStats(dCur);
+            const statsPrev = calcStats(dPrev);
+            const statsM = calcStats(dCur.filter(d => d.AUDITOR_REAL === 'Marco Lara'));
+
+            const supStats = {}; const execStatsCur = {}; const execStatsPrev = {}; const servStats = {};
+            dCur.forEach(d => {
+                let n = parseFloat(d.NOTA.replace('%','')) || 0;
+                if(!supStats[d.SUPERVISOR]) supStats[d.SUPERVISOR] = {sum:0, pecs:0, total:0};
+                supStats[d.SUPERVISOR].sum += n; supStats[d.SUPERVISOR].total++; if(n===0) supStats[d.SUPERVISOR].pecs++;
+                
+                if(!execStatsCur[d.NOMBRE]) execStatsCur[d.NOMBRE] = {sum:0, pecs:0, total:0, serv: d.SERVICIO};
+                execStatsCur[d.NOMBRE].sum += n; execStatsCur[d.NOMBRE].total++; if(n===0) execStatsCur[d.NOMBRE].pecs++;
+                
+                if(!servStats[d.SERVICIO]) servStats[d.SERVICIO] = {sum:0, pecs:0, total:0};
+                servStats[d.SERVICIO].sum += n; servStats[d.SERVICIO].total++; if(n===0) servStats[d.SERVICIO].pecs++;
+            });
+
+            dPrev.forEach(d => {
+                let n = parseFloat(d.NOTA.replace('%','')) || 0;
+                if(!execStatsPrev[d.NOMBRE]) execStatsPrev[d.NOMBRE] = {sum:0, total:0};
+                execStatsPrev[d.NOMBRE].sum += n; execStatsPrev[d.NOMBRE].total++;
+            });
+
+            const pecDetails = dCur.filter(d => parseFloat(d.NOTA.replace('%','')) === 0);
+            const area = document.getElementById('reporteDraggableArea'); area.innerHTML = '';
+
+            const createCard = (id, title, content, x, y, widthClass) => `
+                <div id="${id}" class="absolute bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden ${widthClass}" style="left: ${x}px; top: ${y}px;">
+                    <div id="${id}Header" class="bg-slate-800 text-white p-2 flex items-center cursor-move text-[10px] font-bold uppercase tracking-wider"><i class="fas fa-arrows-alt mr-2 text-slate-400"></i> ${title}</div>
+                    <div class="p-3 max-h-[350px] overflow-y-auto text-xs">${content}</div>
+                </div>`;
+
+            let html = '';
+
+            // 1. Global Comp
+            let h1 = `<div class="grid grid-cols-2 gap-2 mb-2 border-b border-slate-100 pb-2"><div class="text-center"><p class="text-[9px] text-slate-400">MES SELECCIONADO</p><p class="text-2xl font-black text-indigo-600">${statsCur.avg}%</p></div><div class="text-center border-l border-slate-100"><p class="text-[9px] text-slate-400">MES ANTERIOR</p><p class="text-2xl font-black text-slate-400">${statsPrev.avg}%</p></div></div><div class="flex justify-between text-[10px] bg-slate-50 p-1 rounded"><span>PECs: <b class="text-red-500">${statsCur.pecs}</b> (Ant: ${statsPrev.pecs})</span><span>Auds: <b>${statsCur.total}</b> (Ant: ${statsPrev.total})</span></div>`;
+            html += createCard('cardCompGlobal', 'Comparativa Global', h1, 20, 20, 'w-64');
+
+            // 2. Promedio M
+            let h2 = `<div class="text-center py-2"><p class="text-3xl font-black text-emerald-500">${statsM.avg}%</p><p class="text-[10px] font-bold text-slate-500 uppercase mt-1 bg-emerald-50 p-1 rounded">Total hechas: ${statsM.total}</p></div>`;
+            html += createCard('cardPromM', 'Nota Promedio M', h2, 290, 20, 'w-48');
+
+            // 3. Sup vs ML
+            let h3 = `<table class="w-full text-left"><thead><tr class="text-[9px] text-slate-400 uppercase border-b"><th class="pb-1">Auditor / Equipo</th><th class="text-center pb-1">Nota Promedio</th></tr></thead><tbody class="divide-y divide-slate-50"><tr><td class="py-1 font-black text-indigo-600">Gestión Marco Lara</td><td class="py-1 text-center font-black text-indigo-600">${statsM.avg}%</td></tr>`;
+            Object.keys(supStats).forEach(s => { h3 += `<tr><td class="py-1 text-slate-600">Equipo ${s.split(' ')[0]}</td><td class="py-1 text-center font-bold">${supStats[s].total ? (supStats[s].sum/supStats[s].total).toFixed(1) : 0}%</td></tr>`; });
+            h3 += `</tbody></table>`;
+            html += createCard('cardSupVsML', 'Marco Lara vs Equipos', h3, 500, 20, 'w-64');
+
+            // 4. Sup Comp
+            let h4 = `<table class="w-full text-left"><thead><tr class="text-[9px] text-slate-400 uppercase border-b"><th class="pb-1">Supervisor</th><th class="text-center pb-1">Prom Eq.</th><th class="text-center pb-1">Total PECs</th></tr></thead><tbody class="divide-y divide-slate-50">`;
+            Object.keys(supStats).forEach(s => { h4 += `<tr><td class="py-1 text-slate-700 truncate max-w-[100px]">${s}</td><td class="py-1 text-center font-bold text-indigo-600">${supStats[s].total ? (supStats[s].sum/supStats[s].total).toFixed(1) : 0}%</td><td class="py-1 text-center font-bold text-red-500">${supStats[s].pecs}</td></tr>`; });
+            h4 += `</tbody></table>`;
+            html += createCard('cardSupComp', 'Cuadro Supervisor', h4, 770, 20, 'w-64');
+
+            // 5. Serv Comp
+            let h5 = `<table class="w-full text-left"><thead><tr class="text-[9px] text-slate-400 uppercase border-b"><th class="pb-1">Servicio</th><th class="text-center pb-1">Prom. Gral</th><th class="text-center pb-1">PECs</th></tr></thead><tbody class="divide-y divide-slate-50">`;
+            Object.keys(servStats).forEach(s => { h5 += `<tr><td class="py-1 text-slate-700">${s}</td><td class="py-1 text-center font-bold text-indigo-600">${servStats[s].total ? (servStats[s].sum/servStats[s].total).toFixed(1) : 0}%</td><td class="py-1 text-center font-bold text-red-500">${servStats[s].pecs}</td></tr>`; });
+            h5 += `</tbody></table>`;
+            html += createCard('cardServComp', 'Calidad por Servicio', h5, 20, 180, 'w-64');
+
+            // 6. Top 4 by Service
+            let h6 = ``;
+            Object.keys(servStats).forEach(s => {
+                let top4 = Object.keys(execStatsCur).filter(k => execStatsCur[k].serv === s && execStatsCur[k].pecs === 0).map(k => ({n: k, a: (execStatsCur[k].sum/execStatsCur[k].total).toFixed(1)})).sort((a,b) => b.a - a.a).slice(0,4);
+                h6 += `<div class="mb-3"><div class="text-[9px] font-bold bg-emerald-50 text-emerald-700 p-1 mb-1 rounded flex justify-between"><span>${s}</span><span>EXCLUYE PECs</span></div><ul class="space-y-1">`;
+                if(top4.length === 0) h6 += `<li class="text-[9px] italic text-slate-400">Sin ejecutivos limpios</li>`;
+                top4.forEach((e, i) => { h6 += `<li class="flex justify-between text-[9px]"><span class="truncate w-32">${i+1}. ${e.n}</span><span class="font-bold">${e.a}%</span></li>`; });
+                h6 += `</ul></div>`;
+            });
+            html += createCard('cardTop4', 'TOP 4 Excelencia', h6, 290, 180, 'w-56');
+
+            // 7. PEC Detail
+            let h7 = `<table class="w-full text-left text-[9px]"><thead><tr class="text-slate-400 uppercase border-b"><th class="pb-1">Fecha</th><th class="pb-1">Ejecutivo</th><th class="pb-1">Indicador Fallado</th></tr></thead><tbody class="divide-y divide-slate-50">`;
+            if(pecDetails.length === 0) h7 += `<tr><td colspan="3" class="text-center py-4 italic text-slate-400">Sin PECs detectados</td></tr>`;
+            pecDetails.forEach(d => {
+                let fallos = [];
+                if(d.DETALLE) { Object.entries(d.DETALLE).forEach(([k,v]) => { if(v==='NO' && ["SEG_", "COND_", "OP_", "SIST_"].some(pre => k.startsWith(pre))) fallos.push(INDICADORES_MAP[k]||k); }); }
+                h7 += `<tr><td class="py-1 w-12">${(d.FECHA_LLAMADA||d.FECHA).substring(5,10)}</td><td class="py-1 truncate max-w-[100px]">${d.NOMBRE}</td><td class="py-1 text-red-500 font-bold truncate max-w-[160px]" title="${fallos.join(', ')}">${fallos.join(', ')}</td></tr>`;
+            });
+            h7 += `</tbody></table>`;
+            html += createCard('cardPecDetail', 'Detalle PECs por Ejecutivo', h7, 530, 180, 'w-[496px]');
+
+            // 8. All Execs Table
+            let h8 = `<table class="w-full text-left text-[10px]"><thead><tr class="text-slate-400 uppercase border-b bg-white sticky top-0"><th class="pb-1">Ejecutivo</th><th class="text-center pb-1">Prom. Actual</th><th class="text-center pb-1">Prom. Ant.</th><th class="text-center pb-1">Total PECs</th></tr></thead><tbody class="divide-y divide-slate-50">`;
+            const execNames = Array.from(new Set([...Object.keys(execStatsCur), ...Object.keys(execStatsPrev)])).sort();
+            execNames.forEach(n => {
+                let c = execStatsCur[n]; let p = execStatsPrev[n];
+                let aCur = c && c.total ? (c.sum/c.total).toFixed(1) : '-'; let aPrev = p && p.total ? (p.sum/p.total).toFixed(1) : '-';
+                h8 += `<tr><td class="py-1 font-bold text-slate-600 truncate max-w-[140px]">${n}</td><td class="py-1 text-center font-black text-indigo-600">${aCur}%</td><td class="py-1 text-center text-slate-400">${aPrev}%</td><td class="py-1 text-center ${c && c.pecs>0?'text-red-500 font-bold bg-red-50 rounded':''}">${c ? c.pecs : 0}</td></tr>`;
+            });
+            h8 += `</tbody></table>`;
+            html += createCard('cardExecSummary', 'Resumen General Todos los Ejecutivos', h8, 20, 350, 'w-[496px]');
+
+            area.innerHTML = html;
+
+            ['cardCompGlobal', 'cardPromM', 'cardSupVsML', 'cardSupComp', 'cardServComp', 'cardTop4', 'cardPecDetail', 'cardExecSummary'].forEach(id => {
+                const elmnt = document.getElementById(id); const header = document.getElementById(id+'Header');
+                if (!elmnt || !header) return;
+                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+                header.onmousedown = (e) => {
+                    e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY;
+                    elmnt.style.zIndex = 100;
+                    document.onmouseup = () => { elmnt.style.zIndex = ""; document.onmouseup = null; document.onmousemove = null; };
+                    document.onmousemove = (ev) => {
+                        ev.preventDefault(); pos1 = pos3 - ev.clientX; pos2 = pos4 - ev.clientY;
+                        pos3 = ev.clientX; pos4 = ev.clientY;
+                        elmnt.style.top = (elmnt.offsetTop - pos2) + "px"; elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+                    };
+                };
+            });
         }
 
         function renderDash(){
