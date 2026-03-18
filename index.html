@@ -578,29 +578,54 @@ function switchDashView(view) {
             }
         }
 
-        function poblarMesesReporte() {
+function poblarMesesReporte() {
             const select = document.getElementById('fMesReporte');
-            const meses = new Set();
+            const periodos = new Set();
             RAW_DATA.forEach(d => {
                 let f = d.FECHA_LLAMADA || d.FECHA;
-                if(f && f.length >= 7) meses.add(f.substring(0,7));
+                if(f && f.length >= 7) {
+                    let m = f.substring(0,7);
+                    periodos.add(m); // Agrega el Mes
+                    if(d.SEMANA) periodos.add(`${m} | ${d.SEMANA}`); // Agrega la Semana
+                }
             });
-            const sortedMeses = Array.from(meses).sort().reverse();
+            const sortedPeriodos = Array.from(periodos).sort().reverse();
             const actualVal = select.value;
-            select.innerHTML = sortedMeses.map(m => `<option value="${m}">${m}</option>`).join('');
-            if(actualVal && sortedMeses.includes(actualVal)) select.value = actualVal;
+            select.innerHTML = sortedPeriodos.map(p => `<option value="${p}">${p.includes('|') ? '🗓️ Sem: ' + p : '📅 Mes: ' + p}</option>`).join('');
+            if(actualVal && sortedPeriodos.includes(actualVal)) select.value = actualVal;
         }
 
-        function renderReporteMensual() {
-            const mesActual = document.getElementById('fMesReporte').value;
-            if(!mesActual) return;
-            
-            const meses = Array.from(new Set(RAW_DATA.map(d => (d.FECHA_LLAMADA||d.FECHA).substring(0,7)))).sort().reverse();
-            let idx = meses.indexOf(mesActual);
-            const mesAnterior = (idx >= 0 && idx + 1 < meses.length) ? meses[idx + 1] : null;
+        let cardPositions = {}; // Variable global para guardar las posiciones
 
-            const dCur = RAW_DATA.filter(d => (d.FECHA_LLAMADA||d.FECHA).startsWith(mesActual));
-            const dPrev = mesAnterior ? RAW_DATA.filter(d => (d.FECHA_LLAMADA||d.FECHA).startsWith(mesAnterior)) : [];
+        function renderReporteMensual() {
+            const valActual = document.getElementById('fMesReporte').value;
+            if(!valActual) return;
+            
+            const periodos = new Set();
+            RAW_DATA.forEach(d => {
+                let f = d.FECHA_LLAMADA || d.FECHA;
+                if(f && f.length >= 7) {
+                    let m = f.substring(0,7);
+                    periodos.add(m);
+                    if(d.SEMANA) periodos.add(`${m} | ${d.SEMANA}`);
+                }
+            });
+            const sortedPeriodos = Array.from(periodos).sort().reverse();
+            let idx = sortedPeriodos.indexOf(valActual);
+            const valAnterior = (idx >= 0 && idx + 1 < sortedPeriodos.length) ? sortedPeriodos[idx + 1] : null;
+
+            const filterByPeriod = (data, pVal) => {
+                if(!pVal) return [];
+                if(pVal.includes('|')) { 
+                    const [m, s] = pVal.split(' | ');
+                    return data.filter(d => (d.FECHA_LLAMADA||d.FECHA).startsWith(m) && d.SEMANA === s);
+                } else { 
+                    return data.filter(d => (d.FECHA_LLAMADA||d.FECHA).startsWith(pVal));
+                }
+            };
+
+            const dCur = filterByPeriod(RAW_DATA, valActual);
+            const dPrev = filterByPeriod(RAW_DATA, valAnterior);
 
             const calcStats = (data) => {
                 let sum = 0, pecs = 0, total = data.length;
@@ -634,16 +659,21 @@ function switchDashView(view) {
             const pecDetails = dCur.filter(d => parseFloat(d.NOTA.replace('%','')) === 0);
             const area = document.getElementById('reporteDraggableArea'); area.innerHTML = '';
 
-            const createCard = (id, title, content, x, y, widthClass) => `
+            // Se elimina la barra de desplazamiento para que los cuadros se alarguen solos
+            const createCard = (id, title, content, defaultX, defaultY, widthClass) => {
+                let x = cardPositions[id] ? cardPositions[id].x : defaultX;
+                let y = cardPositions[id] ? cardPositions[id].y : defaultY;
+                return `
                 <div id="${id}" class="absolute bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden ${widthClass}" style="left: ${x}px; top: ${y}px;">
                     <div id="${id}Header" class="bg-slate-800 text-white p-2 flex items-center cursor-move text-[10px] font-bold uppercase tracking-wider"><i class="fas fa-arrows-alt mr-2 text-slate-400"></i> ${title}</div>
-                    <div class="p-3 max-h-[350px] overflow-y-auto text-xs">${content}</div>
+                    <div class="p-3 text-xs">${content}</div>
                 </div>`;
+            };
 
             let html = '';
 
             // 1. Global Comp
-            let h1 = `<div class="grid grid-cols-2 gap-2 mb-2 border-b border-slate-100 pb-2"><div class="text-center"><p class="text-[9px] text-slate-400">MES SELECCIONADO</p><p class="text-2xl font-black text-indigo-600">${statsCur.avg}%</p></div><div class="text-center border-l border-slate-100"><p class="text-[9px] text-slate-400">MES ANTERIOR</p><p class="text-2xl font-black text-slate-400">${statsPrev.avg}%</p></div></div><div class="flex justify-between text-[10px] bg-slate-50 p-1 rounded"><span>PECs: <b class="text-red-500">${statsCur.pecs}</b> (Ant: ${statsPrev.pecs})</span><span>Auds: <b>${statsCur.total}</b> (Ant: ${statsPrev.total})</span></div>`;
+            let h1 = `<div class="grid grid-cols-2 gap-2 mb-2 border-b border-slate-100 pb-2"><div class="text-center"><p class="text-[9px] text-slate-400">PERIODO SELECCIONADO</p><p class="text-2xl font-black text-indigo-600">${statsCur.avg}%</p></div><div class="text-center border-l border-slate-100"><p class="text-[9px] text-slate-400">PERIODO ANTERIOR</p><p class="text-2xl font-black text-slate-400">${statsPrev.avg}%</p></div></div><div class="flex justify-between text-[10px] bg-slate-50 p-1 rounded"><span>PECs: <b class="text-red-500">${statsCur.pecs}</b> (Ant: ${statsPrev.pecs})</span><span>Auds: <b>${statsCur.total}</b> (Ant: ${statsPrev.total})</span></div>`;
             html += createCard('cardCompGlobal', 'Comparativa Global', h1, 20, 20, 'w-64');
 
             // 2. Promedio M
@@ -690,13 +720,19 @@ function switchDashView(view) {
             h7 += `</tbody></table>`;
             html += createCard('cardPecDetail', 'Detalle PECs por Ejecutivo', h7, 530, 180, 'w-[496px]');
 
-            // 8. All Execs Table
+            // 8. All Execs Table (Con corrección de "-%")
             let h8 = `<table class="w-full text-left text-[10px]"><thead><tr class="text-slate-400 uppercase border-b bg-white sticky top-0"><th class="pb-1">Ejecutivo</th><th class="text-center pb-1">Prom. Actual</th><th class="text-center pb-1">Prom. Ant.</th><th class="text-center pb-1">Total PECs</th></tr></thead><tbody class="divide-y divide-slate-50">`;
             const execNames = Array.from(new Set([...Object.keys(execStatsCur), ...Object.keys(execStatsPrev)])).sort();
             execNames.forEach(n => {
                 let c = execStatsCur[n]; let p = execStatsPrev[n];
-                let aCur = c && c.total ? (c.sum/c.total).toFixed(1) : '-'; let aPrev = p && p.total ? (p.sum/p.total).toFixed(1) : '-';
-                h8 += `<tr><td class="py-1 font-bold text-slate-600 truncate max-w-[140px]">${n}</td><td class="py-1 text-center font-black text-indigo-600">${aCur}%</td><td class="py-1 text-center text-slate-400">${aPrev}%</td><td class="py-1 text-center ${c && c.pecs>0?'text-red-500 font-bold bg-red-50 rounded':''}">${c ? c.pecs : 0}</td></tr>`;
+                // Si no hay datos se muestra "-" en lugar de "-%"
+                let aCur = c && c.total ? (c.sum/c.total).toFixed(1) + '%' : '-'; 
+                let aPrev = p && p.total ? (p.sum/p.total).toFixed(1) + '%' : '-';
+                
+                // Muestra la fila solo si el ejecutivo tiene registros en alguno de los dos periodos
+                if((c && c.total > 0) || (p && p.total > 0)) {
+                    h8 += `<tr><td class="py-1 font-bold text-slate-600 truncate max-w-[140px]">${n}</td><td class="py-1 text-center font-black text-indigo-600">${aCur}</td><td class="py-1 text-center text-slate-400">${aPrev}</td><td class="py-1 text-center ${c && c.pecs>0?'text-red-500 font-bold bg-red-50 rounded':''}">${c ? c.pecs : 0}</td></tr>`;
+                }
             });
             h8 += `</tbody></table>`;
             html += createCard('cardExecSummary', 'Resumen General Todos los Ejecutivos', h8, 20, 350, 'w-[496px]');
@@ -710,7 +746,11 @@ function switchDashView(view) {
                 header.onmousedown = (e) => {
                     e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY;
                     elmnt.style.zIndex = 100;
-                    document.onmouseup = () => { elmnt.style.zIndex = ""; document.onmouseup = null; document.onmousemove = null; };
+                    document.onmouseup = () => { 
+                        elmnt.style.zIndex = ""; 
+                        document.onmouseup = null; document.onmousemove = null; 
+                        cardPositions[id] = { x: elmnt.offsetLeft, y: elmnt.offsetTop }; // Guarda la posición
+                    };
                     document.onmousemove = (ev) => {
                         ev.preventDefault(); pos1 = pos3 - ev.clientX; pos2 = pos4 - ev.clientY;
                         pos3 = ev.clientX; pos4 = ev.clientY;
