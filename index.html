@@ -159,7 +159,7 @@
                     </table>
                 </div>
                 <input type="hidden" name="nota_final" id="notaFinalHidden" value="0%">
-                <div><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Comentarios</label><textarea name="comentario" id="mainComments" class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none h-16 resize-none" placeholder="Observaciones generales..."></textarea></div>
+                <div><div class="flex items-center gap-3 mb-1"><label class="block text-[10px] font-bold text-slate-400 uppercase">Comentarios</label><div class="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded px-2 py-0.5"><span class="text-[9px] font-bold text-orange-600 uppercase">Llamada Larga ></span><input type="number" id="inputLlamadaLarga" class="w-10 border border-orange-300 rounded p-0.5 text-[10px] text-center outline-none bg-white" placeholder="Min"><span class="text-[9px] font-bold text-orange-600 uppercase">min</span></div></div><textarea name="comentario" id="mainComments" class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none h-16 resize-none" placeholder="Observaciones generales..."></textarea></div>
                 <button type="submit" id="btnGuardar" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded shadow transition flex justify-center items-center gap-2 text-xs tracking-widest uppercase"><i class="fas fa-save text-emerald-400"></i> Guardar Auditoría</button>
             </form>
         </div>
@@ -169,7 +169,7 @@
         <div id="stickyFilter" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end sticky top-0 z-40 filter-transition">
             <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Periodo</label><select id="fMes" class="w-full border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">📅 Histórico</option></select></div>
             <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Supervisor</label><select id="fSup" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">Todos</option></select></div>
-            <div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Servicio</label><select id="fServ" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">Todos</option></select></div>
+<div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Servicio</label><select id="fServ" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODOS">Todos</option></select></div><div class="flex-1 min-w-[120px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tipo</label><select id="fTipo" class="w-full border border-slate-200 p-2 rounded text-xs bg-slate-50 outline-none" onchange="aplicarFiltros()"><option value="TODAS">Todas</option><option value="LARGAS">Llamadas Largas</option></select></div>
             <div class="flex-[2] min-w-[180px]"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Ejecutivo</label><input type="text" id="fSearch" list="lista-filtro-dash" class="w-full pl-3 border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none uppercase" placeholder="Buscar..." oninput="aplicarFiltros()"><datalist id="lista-filtro-dash"></datalist></div>
             <div class="flex items-center gap-2">
                 <button onclick="loadData()" class="px-3 py-2 bg-blue-100 text-blue-600 rounded text-xs font-bold border border-blue-200 hover:bg-blue-200 transition"><i class="fas fa-sync-alt"></i></button>
@@ -416,9 +416,13 @@
             b.disabled=true;
 
             document.getElementById('fechaAuditoria').value=new Date().toISOString().split('T')[0];
-            let obs=document.querySelector('[name="comentario"]').value, errs="";
+            let minLarga = document.getElementById('inputLlamadaLarga') ? document.getElementById('inputLlamadaLarga').value : "";
+            let prefijo = minLarga ? `[Duración llamada > ${minLarga} minutos]\n` : "";
+            let obs = document.querySelector('[name="comentario"]').value, errs="";
             document.querySelectorAll('.desc-input').forEach(i=>{if(i.value)errs+=`\n• ${i.closest('tr').cells[0].innerText}: ${i.value}`});
-            if(errs) document.querySelector('[name="comentario"]').value=obs+"\n--- DETALLE ---"+errs;
+            let finalObs = prefijo + obs;
+            if(errs) finalObs += (finalObs ? "\n" : "") + "--- DETALLE ---" + errs;
+            document.querySelector('[name="comentario"]').value = finalObs;
             
             const fd=new FormData(this);
             fetch(API_URL,{method:'POST',body:JSON.stringify(Object.fromEntries(fd)),headers:{'Content-Type':'text/plain'}})
@@ -484,9 +488,9 @@ function cambiarTab(id){
             Array.from(sp).sort().forEach(s=>sP.add(new Option(s,s))); Array.from(sv).sort().forEach(s=>sV.add(new Option(s,s)));
             if(saveM) mS.value = saveM;
         }
-
-        function aplicarFiltros(){
+function aplicarFiltros(){
             const fm=document.getElementById('fMes').value, fsp=document.getElementById('fSup').value, fsv=document.getElementById('fServ').value, fs=document.getElementById('fSearch').value.toLowerCase();
+            const fTipo = document.getElementById('fTipo') ? document.getElementById('fTipo').value : 'TODAS';
             document.getElementById('lblPeriodoCobertura').innerText = fm !== "TODOS" ? (fm.includes('|') ? `Filtrado: ${fm.split('|')[0]} - ${fm.split('|')[1]}` : `Filtrado: ${fm}`) : "Todo el Historial";
             activeTableFilter = null; 
             document.getElementById('btnResetTabla').classList.add('hidden');
@@ -494,13 +498,14 @@ function cambiarTab(id){
             FILTERED_DATA=RAW_DATA.filter(d=>{
                 let f=d.FECHA_LLAMADA||d.FECHA;
                 if(fm!=='TODOS'){ if(fm.includes('|')){const[m,s]=fm.split('|');if(!f.startsWith(m)||d.SEMANA!==s)return false}else if(!f.startsWith(fm))return false }
-                if(fsp!=='TODOS'&&d.SUPERVISOR!==fsp)return false; if(fsv!=='TODOS'&&d.SERVICIO!==fsv)return false; if(fs&&!d.NOMBRE.toLowerCase().includes(fs))return false; return true;
+                if(fsp!=='TODOS'&&d.SUPERVISOR!==fsp)return false; if(fsv!=='TODOS'&&d.SERVICIO!==fsv)return false; if(fs&&!d.NOMBRE.toLowerCase().includes(fs))return false; 
+                if(fTipo === 'LARGAS' && !(d.OBS && d.OBS.includes('[Duración llamada >'))) return false;
+                return true;
             });
             renderDash();
         }
-        function resetFiltros(){ document.getElementById('fMes').value='TODOS'; document.getElementById('fSup').value='TODOS'; document.getElementById('fServ').value='TODOS'; document.getElementById('fSearch').value=''; aplicarFiltros(); }
-
-        function handleScroll() {
+        function resetFiltros(){ document.getElementById('fMes').value='TODOS'; document.getElementById('fSup').value='TODOS'; document.getElementById('fServ').value='TODOS'; document.getElementById('fSearch').value=''; if(document.getElementById('fTipo')) document.getElementById('fTipo').value='TODAS'; aplicarFiltros(); }
+               function handleScroll() {
             const dash = document.getElementById('tabDashboard');
             const filter = document.getElementById('stickyFilter');
             if (dash.scrollTop > 10) {
