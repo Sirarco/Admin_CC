@@ -471,7 +471,7 @@ function cambiarTab(id){
             } else { Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar a la base de datos.'}); }
             if(loader) loader.classList.add('hidden');
         }
-        async function intentarFetch(url) { try { const resp = await fetch(url); if (!resp.ok) return null; const json = await resp.json(); return Array.isArray(json) ? json : null; } catch (e) { return null; } }
+       async function intentarFetch(url) { try { const resp = await fetch(url); if (!resp.ok) return null; const json = await resp.json(); return (json && json.auditorias) ? json.auditorias : (Array.isArray(json) ? json : null); } catch (e) { return null; } }
 
         function fillSelects(data){
             const mS=document.getElementById('fMes'), sP=document.getElementById('fSup'), sV=document.getElementById('fServ');
