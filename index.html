@@ -458,29 +458,34 @@ function renderFormTable() {
                     lc = i.cat;
                 }
 
-                // Limpiamos el label (quitamos el porcentaje) y buscamos en la pauta de forma flexible
-                let labelLimpio = i.label.split(' (')[0].trim().toUpperCase();
+                // 1. Limpiamos el label (ej: "1. Validación Identidad") para buscarlo en la pauta
+                let labelLimpio = i.label.trim().toUpperCase();
                 
                 let infoPauta = null;
                 if (window.PAUTA_DATA) {
-                    // Buscamos coincidencia exacta ignorando mayúsculas/minúsculas
+                    // 2. Buscamos en la Columna B (Indicador) de la hoja Config_Pauta
                     infoPauta = window.PAUTA_DATA.find(x => {
-                        let ind = (x.INDICADOR || x.Indicador || "").toString().toUpperCase().trim();
+                        let ind = (x.Indicador || x.INDICADOR || "").toString().toUpperCase().trim();
                         return ind === labelLimpio;
                     });
                 }
                 
-                // Mapeo de columnas: buscamos cualquier variación común de nombres de cabecera
-                let textoSi = infoPauta ? (infoPauta.SI || infoPauta.CUMPLE || infoPauta["Criterio SI"] || infoPauta["CRITERIO SI"] || "Criterio aceptado") : "Cumple con el estándar definido.";
-                let textoNo = infoPauta ? (infoPauta.NO || infoPauta.INCUMPLE || infoPauta["Criterio NO"] || infoPauta["CRITERIO NO"] || "No cumple con el estándar") : "No cumple con el estándar definido.";
+                // 3. Extraemos el contenido de la Columna D (Criterio_SI) y Columna E (Criterio_NO)
+                let textoSi = infoPauta ? (infoPauta.Criterio_SI || infoPauta.CRITERIO_SI || "Definición no encontrada") : "Cargando criterio...";
+                let textoNo = infoPauta ? (infoPauta.Criterio_NO || infoPauta.CRITERIO_NO || "Definición no encontrada") : "Cargando criterio...";
 
                 tb.innerHTML += `
                 <tr class="hover:bg-slate-50 border-b border-slate-100">
                     <td class="p-2 w-1/2">
                         <div class="font-bold text-slate-700 text-[10px] uppercase mb-1">${i.label}</div>
+                        
                         <div class="grid grid-cols-2 gap-2 mt-1">
-                            <div class="text-[9px] text-emerald-600 bg-emerald-50 p-1 rounded border border-emerald-100"><b>CUMPLE:</b> ${textoSi}</div>
-                            <div class="text-[9px] text-red-600 bg-red-50 p-1 rounded border border-red-100"><b>NO CUMPLE:</b> ${textoNo}</div>
+                            <div class="text-[9px] text-emerald-600 bg-emerald-50 p-1 rounded border border-emerald-100">
+                                <b>CUMPLE (Col D):</b> ${textoSi}
+                            </div>
+                            <div class="text-[9px] text-red-600 bg-red-50 p-1 rounded border border-red-100">
+                                <b>NO CUMPLE (Col E):</b> ${textoNo}
+                            </div>
                         </div>
                     </td>
                     <td class="p-2 text-center w-24">
