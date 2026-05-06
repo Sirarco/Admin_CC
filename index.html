@@ -380,10 +380,15 @@
             document.getElementById('auditTools').classList.remove('hidden'); 
             document.getElementById('audioDock').classList.remove('hidden'); 
             
-            // Fetch Pauta de Calidad Asíncrono
+
+// Fetch Pauta de Calidad Asíncrono
             fetch("https://script.google.com/macros/s/AKfycbzEnzOn8TVN8xAX7do3tk1N2g3bD0lKh9EF5eh6T_I2yHFiPdeKDrM4RTwjG8f2uIzDJQ/exec")
                 .then(res => res.json())
-                .then(data => window.PAUTA_DATA = data.pauta)
+                .then(data => {
+                    window.PAUTA_DATA = data.pauta;
+                    // RE-RENDERIZAR la tabla para que use los datos reales recién llegados
+                    renderFormTable(); 
+                })
                 .catch(e => console.error("Error cargando pauta", e));
 
             // Hacer cajas arrastrables
@@ -453,20 +458,29 @@ function renderFormTable() {
                     lc = i.cat;
                 }
 
-                // Limpiamos el label por si tiene "(5%)" para buscar en la pauta
-                let labelLimpio = i.label.split(' (')[0].trim();
-                let infoPauta = window.PAUTA_DATA ? window.PAUTA_DATA.find(x => x.INDICADOR === labelLimpio) : null;
+                // Limpiamos el label (quitamos el porcentaje) y buscamos en la pauta de forma flexible
+                let labelLimpio = i.label.split(' (')[0].trim().toUpperCase();
                 
-                let textoSi = infoPauta ? (infoPauta.SI || infoPauta.CUMPLE || "Ver pauta oficial") : "SI: Cumple con el estándar.";
-                let textoNo = infoPauta ? (infoPauta.NO || infoPauta.INCUMPLE || "Ver pauta oficial") : "NO: No cumple con el estándar.";
+                let infoPauta = null;
+                if (window.PAUTA_DATA) {
+                    // Buscamos coincidencia exacta ignorando mayúsculas/minúsculas
+                    infoPauta = window.PAUTA_DATA.find(x => {
+                        let ind = (x.INDICADOR || x.Indicador || "").toString().toUpperCase().trim();
+                        return ind === labelLimpio;
+                    });
+                }
+                
+                // Mapeo de columnas: buscamos cualquier variación común de nombres de cabecera
+                let textoSi = infoPauta ? (infoPauta.SI || infoPauta.CUMPLE || infoPauta["Criterio SI"] || infoPauta["CRITERIO SI"] || "Criterio aceptado") : "Cumple con el estándar definido.";
+                let textoNo = infoPauta ? (infoPauta.NO || infoPauta.INCUMPLE || infoPauta["Criterio NO"] || infoPauta["CRITERIO NO"] || "No cumple con el estándar") : "No cumple con el estándar definido.";
 
                 tb.innerHTML += `
                 <tr class="hover:bg-slate-50 border-b border-slate-100">
                     <td class="p-2 w-1/2">
                         <div class="font-bold text-slate-700 text-[10px] uppercase mb-1">${i.label}</div>
                         <div class="grid grid-cols-2 gap-2 mt-1">
-                            <div class="text-[9px] text-emerald-600 bg-emerald-50 p-1 rounded border border-emerald-100"><b>SI:</b> ${textoSi}</div>
-                            <div class="text-[9px] text-red-600 bg-red-50 p-1 rounded border border-red-100"><b>NO:</b> ${textoNo}</div>
+                            <div class="text-[9px] text-emerald-600 bg-emerald-50 p-1 rounded border border-emerald-100"><b>CUMPLE:</b> ${textoSi}</div>
+                            <div class="text-[9px] text-red-600 bg-red-50 p-1 rounded border border-red-100"><b>NO CUMPLE:</b> ${textoNo}</div>
                         </div>
                     </td>
                     <td class="p-2 text-center w-24">
@@ -485,7 +499,6 @@ function renderFormTable() {
                 </tr>`;
             });
         }
-
         
         function updateRow(s) { const r=s.closest('tr'), sc=r.querySelector('.status-cell'), i=r.querySelector('.desc-input'); i.classList.add('hidden'); if(s.value==='SI') sc.innerHTML='<span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span>'; else if(s.value==='NO') { sc.innerHTML='<span class="text-red-600 font-bold bg-red-50 px-1 rounded text-[9px]">NO</span>'; i.classList.remove('hidden'); i.focus(); } else sc.innerHTML='-'; calcScore(); }
        function calcScore() {
