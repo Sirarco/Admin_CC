@@ -458,33 +458,37 @@ function renderFormTable() {
                     lc = i.cat;
                 }
 
-                // 1. Limpiamos el label (ej: "1. Validación Identidad") para buscarlo en la pauta
-                let labelLimpio = i.label.trim().toUpperCase();
+                // 1. Limpiamos el label del código: quitamos (5%), (10%) y espacios
+                let labelFiltro = i.label.split(' (')[0].trim().toUpperCase();
                 
                 let infoPauta = null;
                 if (window.PAUTA_DATA) {
-                    // 2. Buscamos en la Columna B (Indicador) de la hoja Config_Pauta
+                    // 2. Buscamos en la pauta: permitimos que el nombre del Sheet CONTENGA el nombre del código
+                    // Esto permite que "1. Validación Identidad" coincida con "Validación Identidad"
                     infoPauta = window.PAUTA_DATA.find(x => {
-                        let ind = (x.Indicador || x.INDICADOR || "").toString().toUpperCase().trim();
-                        return ind === labelLimpio;
+                        let indSheet = (x.Indicador || x.INDICADOR || "").toString().toUpperCase();
+                        return indSheet.includes(labelFiltro);
                     });
                 }
                 
-                // 3. Extraemos el contenido de la Columna D (Criterio_SI) y Columna E (Criterio_NO)
-                let textoSi = infoPauta ? (infoPauta.Criterio_SI || infoPauta.CRITERIO_SI || "Definición no encontrada") : "Cargando criterio...";
-                let textoNo = infoPauta ? (infoPauta.Criterio_NO || infoPauta.CRITERIO_NO || "Definición no encontrada") : "Cargando criterio...";
+                // 3. Si encontramos coincidencia, usamos el nombre del Sheet (con el número)
+                let nombreFinal = infoPauta ? (infoPauta.Indicador || infoPauta.INDICADOR) : i.label;
+                
+                // 4. Extraemos Criterio_SI y Criterio_NO del Sheet
+                let textoSi = infoPauta ? (infoPauta.Criterio_SI || infoPauta.CRITERIO_SI || "Definición no disponible") : "Cargando descripción...";
+                let textoNo = infoPauta ? (infoPauta.Criterio_NO || infoPauta.CRITERIO_NO || "Definición no disponible") : "Cargando descripción...";
 
                 tb.innerHTML += `
                 <tr class="hover:bg-slate-50 border-b border-slate-100">
                     <td class="p-2 w-1/2">
-                        <div class="font-bold text-slate-700 text-[10px] uppercase mb-1">${i.label}</div>
+                        <div class="font-bold text-slate-700 text-[10px] uppercase mb-1">${nombreFinal}</div>
                         
                         <div class="grid grid-cols-2 gap-2 mt-1">
                             <div class="text-[9px] text-emerald-600 bg-emerald-50 p-1 rounded border border-emerald-100">
-                                <b>CUMPLE (Col D):</b> ${textoSi}
+                                <b class="block border-b border-emerald-200 mb-1">CUMPLE (Criterio SI):</b> ${textoSi}
                             </div>
                             <div class="text-[9px] text-red-600 bg-red-50 p-1 rounded border border-red-100">
-                                <b>NO CUMPLE (Col E):</b> ${textoNo}
+                                <b class="block border-b border-red-200 mb-1">NO CUMPLE (Criterio NO):</b> ${textoNo}
                             </div>
                         </div>
                     </td>
@@ -499,7 +503,7 @@ function renderFormTable() {
                         <span class="text-emerald-600 font-bold bg-emerald-50 px-1 rounded text-[9px]">OK</span>
                     </td>
                     <td class="p-2">
-                        <input class="desc-input hidden w-full border border-red-300 rounded p-1 text-[10px]" placeholder="Detalle...">
+                        <input class="desc-input hidden w-full border border-red-300 rounded p-1 text-[10px]" placeholder="Detalle del hallazgo...">
                     </td>
                 </tr>`;
             });
