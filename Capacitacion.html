@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguimiento de Capacitaciones</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .no-realizada { background-color: #fee2e2; color: #991b1b; }
+        .realizada { background-color: #f0fdf4; color: #166534; }
+    </style>
+</head>
+<body class="bg-slate-50 p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-slate-800">
+                <i class="fas fa-graduation-cap mr-2 text-indigo-600"></i>Control de Capacitaciones
+            </h1>
+            <div id="statusUpdate" class="text-xs font-medium text-slate-500 bg-white px-3 py-1 rounded-full shadow-sm">
+                Cargando datos...
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Pendientes</p>
+                <p id="alertCount" class="text-2xl font-black text-red-600">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Promedio General</p>
+                <p id="avgGlobal" class="text-2xl font-black text-indigo-600">0.0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <label class="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Filtrar Ejecutivo</label>
+                <input type="text" id="filterExec" placeholder="Nombre..." class="w-full text-xs p-1 border-b outline-none">
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-800 text-white uppercase tracking-wider">
+                        <tr>
+                            <th class="p-4">Ejecutivo</th>
+                            <th class="p-4">Capacitación</th>
+                            <th class="p-4 text-center">Fecha</th>
+                            <th class="p-4 text-center">Nota</th>
+                            <th class="p-4 text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "TU_URL_DE_APPS_SCRIPT_AQUÍ";
+
+        async function loadData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                renderTable(data.capacitaciones);
+                document.getElementById('statusUpdate').innerText = "Actualizado hoy";
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('statusUpdate').innerText = "Error de conexión";
+            }
+        }
+
+        function renderTable(data) {
+            const container = document.getElementById('tableBody');
+            const searchInput = document.getElementById('filterExec').value.toLowerCase();
+            container.innerHTML = "";
+
+            let totalAlerts = 0;
+            let sumNotes = 0;
+            let countNotes = 0;
+
+            data.forEach(row => {
+                if (row.NOMBRE && row.ESTADO === "ACTIVO") {
+                    // Ignoramos las primeras 4 columnas fijas (NOMBRE, ESTADO, Usuario, Contraseña)
+                    const keys = Object.keys(row);
+                    const trainingKeys = keys.slice(4); 
+
+                    // Procesamos de a pares (Fecha y Nota)
+                    for (let i = 0; i < trainingKeys.length; i += 2) {
+                        const trainingName = trainingKeys[i];
+                        const dateVal = row[trainingKeys[i]];
+                        const scoreVal = row[trainingKeys[i+1]];
+
+                        if (searchInput && !row.NOMBRE.toLowerCase().includes(searchInput)) continue;
+
+                        const isPending = !dateVal || dateVal === "";
+                        if (isPending) totalAlerts++;
+
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-50 transition";
+                        
+                        if (!isPending) {
+                            sumNotes += parseFloat(scoreVal) || 0;
+                            countNotes++;
+                        }
+
+                        tr.innerHTML = `
+                            <td class="p-4 font-bold text-slate-700">${row.NOMBRE}</td>
+                            <td class="p-4 text-slate-600">${trainingName}</td>
+                            <td class="p-4 text-center font-mono">${dateVal || '-'}</td>
+                            <td class="p-4 text-center font-black ${parseFloat(scoreVal) >= 5 ? 'text-emerald-600' : 'text-red-500'}">
+                                ${scoreVal || '-'}
+                            </td>
+                            <td class="p-4 text-center">
+                                <span class="px-2 py-1 rounded-full text-[10px] font-bold ${isPending ? 'no-realizada' : 'realizada'}">
+                                    ${isPending ? 'PENDIENTE' : 'COMPLETADA'}
+                                </span>
+                            </td>
+                        `;
+                        container.appendChild(tr);
+                    }
+                }
+            });
+
+            document.getElementById('alertCount').innerText = totalAlerts;
+            document.getElementById('avgGlobal').innerText = countNotes > 0 ? (sumNotes / countNotes).toFixed(1) : "0.0";
+        }
+
+        document.getElementById('filterExec').addEventListener('input', loadData);
+        window.onload = loadData;
+    </script>
+</body>
+</html>
