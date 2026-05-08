@@ -123,6 +123,7 @@
             <button onclick="cambiarTab('tabIngreso')" id="navBtnIngreso" class="nav-btn active-tab px-4 py-1.5 rounded text-white">Auditar</button>
             <button onclick="cambiarTab('tabDashboard')" id="navBtnDash" class="nav-btn px-4 py-1.5 rounded text-white">Dashboard</button>
             <button onclick="cambiarTab('tabApelaciones')" id="navBtnApel" class="nav-btn px-4 py-1.5 rounded text-white">Apelaciones</button>
+            <button onclick="cambiarTab('tabCapacitacion')" id="navBtnCapa" class="nav-btn px-4 py-1.5 rounded text-white">Capacitación</button>
             <button onclick="cambiarTab('tabVacios')" id="navBtnVacios" class="nav-btn px-4 py-1.5 rounded text-white">Vacíos</button>
             <button onclick="cambiarTab('tabCasos')" id="navBtnCasos" class="nav-btn px-4 py-1.5 rounded text-white">Casos</button>
         </div>
@@ -290,7 +291,9 @@
     <div id="tabApelaciones" class="hidden flex-1 overflow-y-auto p-6 bg-slate-100">
         <div class="max-w-5xl mx-auto"><h2 class="text-xl font-bold text-slate-700 mb-4 flex items-center"><i class="fas fa-gavel text-pink-500 mr-2"></i> Gestión de Apelaciones</h2><div id="contApelaciones" class="grid grid-cols-1 gap-4"><p class="text-center text-slate-400 py-10 italic">Cargando...</p></div></div>
     </div>
-
+<div id="tabCapacitacion" class="hidden flex-1 bg-slate-100 h-full">
+    <iframe src="Capacitacion.html" class="w-full h-full border-0" style="min-height: calc(100vh - 64px);"></iframe>
+</div>
     <div id="tabVacios" class="hidden flex-1 bg-slate-100 h-full">
         <iframe src="vacios.html" class="w-full h-full border-0" style="min-height: calc(100vh - 64px);"></iframe>
     </div>
