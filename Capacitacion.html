@@ -59,15 +59,17 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbzEnzOn8TVN8xAX7do3tk1N2g3bD0lKh9EF5eh6T_I2yHFiPdeKDrM4RTwjG8f2uIzDJQ/exec";
 
-        async function loadData() {
+async function loadData() {
             try {
-                const response = await fetch(API_URL);
+                // Usamos el proxy para evitar el bloqueo CORS
+                let url = "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(API_URL + "?t=" + Date.now());
+                const response = await fetch(url);
                 const data = await response.json();
                 renderTable(data.capacitaciones);
                 document.getElementById('statusUpdate').innerText = "Actualizado hoy";
             } catch (error) {
                 console.error("Error:", error);
-                document.getElementById('statusUpdate').innerText = "Error de conexión";
+                document.getElementById('statusUpdate').innerText = "Error: Verifica permisos de Script";
             }
         }
 
