@@ -375,13 +375,13 @@
             renderIndicatorList(); // Refrescar visual de la lista
         }
 
-        function resetIndicatorFilters() {
+function resetIndicatorFilters() {
             activeIndicatorFilters = [];
             renderTable();
             renderIndicatorList();
         }
 
-let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0, chartInstances = {}, activeTableFilter = null, activeIndicatorFilters = [], cardPositions = {};
+        let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0, chartInstances = {}, activeTableFilter = null, cardPositions = {};
         let sortColPenc = 'NOMBRE', sortAscPenc = true; // Control de ordenamiento para la tabla PENC
 
         window.onload = () => { 
@@ -940,11 +940,13 @@ function poblarMesesReporte() {
                     }
                 }
             });
-// 5. Conteo de quiebres por cada indicador (CORREGIDO: Eliminado MAPEO)
-            let indicatorCounts = {};
-            
-            // Inicializar todos los indicadores que existen en el mapa en 0
-let ic={}; Object.keys(INDICADORES_MAP).forEach(k=>ic[k]=0); d.forEach(x=>{ if(x.DETALLE) Object.entries(x.DETALLE).forEach(([k,v])=>{if(v==='NO')ic[k]=(ic[k]||0)+1}) }); window.CURRENT_INDICATOR_COUNTS=ic; renderIndicatorList(); renderTable();
+
+// 5. Conteo de quiebres por cada indicador
+            let ic={}; Object.keys(INDICADORES_MAP).forEach(k=>ic[k]=0); 
+            d.forEach(x=>{ if(x.DETALLE) Object.entries(x.DETALLE).forEach(([k,v])=>{if(v==='NO')ic[k]=(ic[k]||0)+1}) }); 
+            window.CURRENT_INDICATOR_COUNTS=ic; 
+            renderIndicatorList(); 
+            renderTable();
             
             renderConsolidadoPENC(); // <-- Llamada a la nueva función
         }
@@ -1022,6 +1024,7 @@ let ic={}; Object.keys(INDICADORES_MAP).forEach(k=>ic[k]=0); d.forEach(x=>{ if(x
         }
 
         // Función que gestiona el orden al hacer click en un encabezado
+// Función que gestiona el orden al hacer click en un encabezado
         window.sortTablePenc = function(col) {
             if (sortColPenc === col) {
                 sortAscPenc = !sortAscPenc;
@@ -1033,8 +1036,8 @@ let ic={}; Object.keys(INDICADORES_MAP).forEach(k=>ic[k]=0); d.forEach(x=>{ if(x
             renderConsolidadoPENC();
         }
         // --- FIN LÓGICA CONSOLIDADO PENC ---
-        }
-function renderIndicatorList() {
+        
+        function renderIndicatorList() {
             const ul = document.getElementById('listAllIndicators');
             if(!ul) return;
             ul.innerHTML = "";
