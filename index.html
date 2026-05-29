@@ -623,21 +623,35 @@ function cambiarTab(id){
             Array.from(sp).sort().forEach(s=>sP.add(new Option(s,s))); Array.from(sv).sort().forEach(s=>sV.add(new Option(s,s)));
             if(saveM) mS.value = saveM;
         }
-function aplicarFiltros(){
-            const fm=document.getElementById('fMes').value, fsp=document.getElementById('fSup').value, fsv=document.getElementById('fServ').value, fs=document.getElementById('fSearch').value.toLowerCase();
-            const fTipo = document.getElementById('fTipo') ? document.getElementById('fTipo').value : 'TODAS';
-            document.getElementById('lblPeriodoCobertura').innerText = fm !== "TODOS" ? (fm.includes('|') ? `Filtrado: ${fm.split('|')[0]} - ${fm.split('|')[1]}` : `Filtrado: ${fm}`) : "Todo el Historial";
-            activeTableFilter = null; 
-            document.getElementById('btnResetTabla').classList.add('hidden');
+function aplicarFiltros() {
+            const elMes = document.getElementById('fMes'), elSup = document.getElementById('fSup');
+            const elServ = document.getElementById('fServ'), elSearch = document.getElementById('fSearch');
+            const elTipo = document.getElementById('fTipo');
             
-            FILTERED_DATA=RAW_DATA.filter(d=>{
-                let f=d.FECHA_LLAMADA||d.FECHA;
-                if(fm!=='TODOS'){ if(fm.includes('|')){const[m,s]=fm.split('|');if(!f.startsWith(m)||d.SEMANA!==s)return false}else if(!f.startsWith(fm))return false }
-                if(fsp!=='TODOS'&&d.SUPERVISOR!==fsp)return false; if(fsv!=='TODOS'&&d.SERVICIO!==fsv)return false; if(fs&&!d.NOMBRE.toLowerCase().includes(fs))return false; 
-                if(fTipo === 'LARGAS' && !(d.OBS && d.OBS.includes('[Duración llamada >'))) return false;
+            const fm = elMes ? elMes.value : 'TODOS';
+            const fsp = elSup ? elSup.value : 'TODOS';
+            const fsv = elServ ? elServ.value : 'TODOS';
+            const fs = elSearch ? elSearch.value.toLowerCase() : '';
+            const ft = elTipo ? elTipo.value : 'TODAS';
+            
+            // Protección contra el error "null" (Si existía un label antiguo, lo ignora o lo actualiza sin romper)
+            const lbl = document.getElementById('lblPeriodoCobertura');
+            if (lbl) lbl.innerText = fm !== "TODOS" ? (fm.includes('|') ? `Filtrado: ${fm.split('|')[0]} - ${fm.split('|')[1]}` : `Filtrado: ${fm}`) : "Todo el Historial";
+            
+            FILTERED_DATA = RAW_DATA.filter(d => {
+                let f = d.FECHA_LLAMADA || d.FECHA;
+                if(fm !== 'TODOS') { 
+                    if(fm.includes('|')){ const [m,s] = fm.split('|'); if(!f.startsWith(m) || d.SEMANA !== s) return false; }
+                    else if(!f.startsWith(fm)) return false; 
+                }
+                if(fsp !== 'TODOS' && d.SUPERVISOR !== fsp) return false; 
+                if(fsv !== 'TODOS' && d.SERVICIO !== fsv) return false; 
+                if(fs && !d.NOMBRE.toLowerCase().includes(fs)) return false;
+                if(ft === 'LARGAS' && !(d.OBS && d.OBS.includes('[Duración llamada >'))) return false;
                 return true;
             });
             renderDash();
+        }
         }
         function resetFiltros(){ document.getElementById('fMes').value='TODOS'; document.getElementById('fSup').value='TODOS'; document.getElementById('fServ').value='TODOS'; document.getElementById('fSearch').value=''; if(document.getElementById('fTipo')) document.getElementById('fTipo').value='TODAS'; aplicarFiltros(); }
                function handleScroll() {
