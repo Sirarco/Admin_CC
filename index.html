@@ -255,22 +255,31 @@
         </div>
     </div>
 </div>
-            <div class="lg:col-span-3 space-y-6">
-                <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center"><h3 class="font-bold text-slate-700 text-xs"><i class="fas fa-users mr-2 text-slate-400"></i>Auditorías por Ejecutivo</h3><span id="lblPeriodoCobertura" class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase">Todo</span></div>
-                    <div class="p-4 max-h-56 overflow-y-auto"><div id="teamCardsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"></div></div>
-                </div>
-                <div id="tablaDetalleContenedor" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
-                    <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
-                        <h3 class="font-bold text-slate-700 text-xs"><i class="fas fa-list mr-2 text-slate-400"></i>Detalle de Evaluaciones</h3>
-                        <button onclick="resetFiltroTabla()" id="btnResetTabla" class="hidden text-[10px] text-blue-500 hover:underline">Ver todo</button>
+<div class="lg:col-span-3 space-y-6">
+                    <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden"><div id="teamCardsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 p-4"></div></div>
+                    <div id="tablaDetalleContenedor" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
+                        <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center"><h3 class="font-bold text-slate-700 text-xs">Detalle evaluaciones</h3><button onclick="resetFiltroTabla()" id="btnResetTabla" class="hidden text-[10px] text-blue-500 hover:underline">Ver todo</button></div>
+                        <div class="overflow-auto flex-1"><table class="w-full text-xs text-left"><thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200 sticky top-0 z-10 text-[10px]"><tr><th>Cód</th><th>Ejecutivo</th><th>Sup</th><th>Fecha</th><th>Sem</th><th>Serv</th><th class="text-center">Nota</th><th class="text-center">Feed</th><th class="text-center">Ver</th></tr></thead><tbody id="mainTable" class="divide-y divide-slate-100"></tbody></table></div>
                     </div>
-                    <div class="overflow-auto flex-1"><table class="w-full text-xs text-left"><thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200 sticky top-0 z-10 text-[10px]"><tr><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('CODIGO')">Cód ↕</th><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('NOMBRE')">Ejecutivo ↕</th><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('SUPERVISOR')">Sup ↕</th><th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTable('FECHA')">Fecha ↕</th><th class="p-2">Sem</th><th class="p-2">Serv</th><th class="p-2 text-center cursor-pointer hover:bg-slate-200" onclick="sortTable('NOTA')">Nota ↕</th><th class="p-2 text-center">Feed</th><th class="p-2 text-center">Ver</th></tr></thead><tbody id="mainTable" class="divide-y divide-slate-100"></tbody></table></div>
                 </div>
             </div>
-        </div>
-        
-</div> <div id="vistaReporteMensual" class="hidden">
+
+            <div class="mt-6 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="bg-slate-800 px-4 py-3 border-b border-slate-700 text-white flex justify-between items-center">
+                    <h3 class="font-bold text-xs"><i class="fas fa-table mr-2 text-slate-400"></i> Consolidado de Quiebres PENC por Ejecutivo</h3>
+                </div>
+                <div class="overflow-auto max-h-[400px]">
+                    <table class="w-full text-xs text-left whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200 sticky top-0 z-10 text-[9px]" id="headTablaPenc">
+                        </thead>
+                        <tbody id="bodyTablaPenc" class="divide-y divide-slate-100">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            </div>
+
+        <div id="vistaReporteMensual" class="hidden">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center gap-4">
                 <label class="text-[10px] font-bold text-slate-400 uppercase">Seleccionar Mes:</label>
                 <select id="fMesReporte" class="border border-slate-200 p-2 rounded text-xs font-bold bg-slate-50 outline-none w-48" onchange="renderReporteMensual()">
@@ -372,10 +381,8 @@
             renderIndicatorList();
         }
 
-        let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0;
-        let chartInstances = {}; 
-        let currentSortCol = 'FECHA', currentSortAsc = false;
-        let activeTableFilter = null; 
+let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0, chartInstances = {}, activeTableFilter = null, activeIndicatorFilters = [], cardPositions = {};
+        let sortColPenc = 'NOMBRE', sortAscPenc = true; // Control de ordenamiento para la tabla PENC
 
         window.onload = () => { 
             renderFormTable(); 
@@ -937,23 +944,95 @@ function poblarMesesReporte() {
             let indicatorCounts = {};
             
             // Inicializar todos los indicadores que existen en el mapa en 0
-            Object.keys(INDICADORES_MAP).forEach(key => {
-                indicatorCounts[key] = 0;
-            });
+let ic={}; Object.keys(INDICADORES_MAP).forEach(k=>ic[k]=0); d.forEach(x=>{ if(x.DETALLE) Object.entries(x.DETALLE).forEach(([k,v])=>{if(v==='NO')ic[k]=(ic[k]||0)+1}) }); window.CURRENT_INDICATOR_COUNTS=ic; renderIndicatorList(); renderTable();
+            
+            renderConsolidadoPENC(); // <-- Llamada a la nueva función
+        }
 
-            d.forEach(x => {
-                if (x.DETALLE) {
-                    Object.entries(x.DETALLE).forEach(([k, v]) => {
-                        if (v === 'NO') {
-                            indicatorCounts[k] = (indicatorCounts[k] || 0) + 1;
+        // --- LÓGICA CONSOLIDADO PENC ---
+        function renderConsolidadoPENC() {
+            // Filtramos únicamente los indicadores PENC (Excluimos PECs)
+            const isPec = (k) => ["SEG_", "COND_", "OP_"].some(pre => k.startsWith(pre)) || k === "SIST_REGISTRO";
+            const pencKeys = Object.keys(INDICADORES_MAP).filter(k => !isPec(k));
+            
+            let pencData = {};
+            
+            // Construir matriz dinámica afectada por el filtro actual (FILTERED_DATA)
+            FILTERED_DATA.forEach(d => {
+                if(!pencData[d.NOMBRE]) {
+                    pencData[d.NOMBRE] = { NOMBRE: d.NOMBRE, FECHA: '', TOTAL_AUD: 0 };
+                    pencKeys.forEach(k => pencData[d.NOMBRE][k] = 0);
+                }
+                pencData[d.NOMBRE].TOTAL_AUD++;
+                let fechaLlamada = d.FECHA_LLAMADA || d.FECHA;
+                if (fechaLlamada > pencData[d.NOMBRE].FECHA) pencData[d.NOMBRE].FECHA = fechaLlamada; // Actualizar con la última fecha
+                
+                if(d.DETALLE) {
+                    Object.entries(d.DETALLE).forEach(([k, v]) => {
+                        if (v === 'NO' && pencData[d.NOMBRE][k] !== undefined) {
+                            pencData[d.NOMBRE][k]++;
                         }
                     });
                 }
             });
 
-            window.CURRENT_INDICATOR_COUNTS = indicatorCounts;
-            renderIndicatorList();
-            renderTable();
+            let arr = Object.values(pencData);
+
+            // Ordenamiento Dinámico
+            arr.sort((a, b) => {
+                let valA = a[sortColPenc];
+                let valB = b[sortColPenc];
+                if (valA < valB) return sortAscPenc ? -1 : 1;
+                if (valA > valB) return sortAscPenc ? 1 : -1;
+                return 0;
+            });
+
+            // Dibujar Cabeceras
+            let thead = `<tr>
+                <th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTablePenc('NOMBRE')">Ejecutivo ${sortColPenc==='NOMBRE'?(sortAscPenc?'↑':'↓'):'↕'}</th>
+                <th class="p-2 cursor-pointer hover:bg-slate-200" onclick="sortTablePenc('FECHA')">Últ. Auditoría ${sortColPenc==='FECHA'?(sortAscPenc?'↑':'↓'):'↕'}</th>
+                <th class="p-2 text-center cursor-pointer hover:bg-slate-200" onclick="sortTablePenc('TOTAL_AUD')">Auds. ${sortColPenc==='TOTAL_AUD'?(sortAscPenc?'↑':'↓'):'↕'}</th>`;
+            
+            pencKeys.forEach(k => {
+                let shortName = INDICADORES_MAP[k].split(' ').slice(0, 2).join(' '); // Abreviar el nombre en la cabecera
+                thead += `<th class="p-2 text-center cursor-pointer hover:bg-slate-200" onclick="sortTablePenc('${k}')" title="${INDICADORES_MAP[k]}">${shortName} ${sortColPenc===k?(sortAscPenc?'↑':'↓'):'↕'}</th>`;
+            });
+            thead += `</tr>`;
+            document.getElementById('headTablaPenc').innerHTML = thead;
+
+            // Dibujar Cuerpo
+            let tbody = '';
+            if(arr.length === 0) {
+                tbody = `<tr><td colspan="${3 + pencKeys.length}" class="text-center p-4 italic text-slate-400">Sin datos para los filtros seleccionados</td></tr>`;
+            } else {
+                arr.forEach(row => {
+                    tbody += `<tr class="hover:bg-slate-50 border-b border-slate-100">
+                        <td class="p-2 font-bold text-slate-700">${row.NOMBRE}</td>
+                        <td class="p-2 text-[10px] text-slate-500">${row.FECHA}</td>
+                        <td class="p-2 text-center font-bold text-slate-600 bg-slate-50/50">${row.TOTAL_AUD}</td>`;
+                    pencKeys.forEach(k => {
+                        let count = row[k];
+                        let cssClass = count > 0 ? 'text-orange-600 font-bold bg-orange-100 rounded px-1.5' : 'text-slate-300';
+                        tbody += `<td class="p-2 text-center"><span class="${cssClass}">${count}</span></td>`;
+                    });
+                    tbody += `</tr>`;
+                });
+            }
+            document.getElementById('bodyTablaPenc').innerHTML = tbody;
+        }
+
+        // Función que gestiona el orden al hacer click en un encabezado
+        window.sortTablePenc = function(col) {
+            if (sortColPenc === col) {
+                sortAscPenc = !sortAscPenc;
+            } else {
+                sortColPenc = col;
+                // Por defecto: Fechas y Nombres A-Z, los conteos de errores se ordenan de Mayor a Menor para visualizar a los críticos primero
+                sortAscPenc = (col === 'NOMBRE' || col === 'FECHA');
+            }
+            renderConsolidadoPENC();
+        }
+        // --- FIN LÓGICA CONSOLIDADO PENC ---
         }
 function renderIndicatorList() {
             const ul = document.getElementById('listAllIndicators');
