@@ -381,7 +381,7 @@ function resetIndicatorFilters() {
             renderIndicatorList();
         }
 
-        let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0, chartInstances = {}, activeTableFilter = null, cardPositions = {};
+       let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0, chartInstances = {}, activeTableFilter = null, cardPositions = {};
         let sortColPenc = 'NOMBRE', sortAscPenc = true; // Control de ordenamiento para la tabla PENC
 
         window.onload = () => { 
@@ -560,18 +560,23 @@ function renderFormTable() {
         });
 
 function cambiarTab(id){
-            // 1. Ocultar todas las pestañas (Agregamos 'tabCasos')
-            ['tabIngreso','tabDashboard','tabApelaciones','tabVacios','tabCasos'].forEach(t=>document.getElementById(t).classList.add('hidden'));
+            // 1. Ocultar todas las pestañas
+            ['tabIngreso','tabDashboard','tabApelaciones','tabVacios','tabCasos','tabCapacitacion'].forEach(t=> {
+                const el = document.getElementById(t);
+                if(el) el.classList.add('hidden');
+            });
             
             // Mostrar la seleccionada
-            document.getElementById(id).classList.remove('hidden');
+            const selectedEl = document.getElementById(id);
+            if(selectedEl) selectedEl.classList.remove('hidden');
+            
             const showDocks = (id === 'tabIngreso');
             document.getElementById('auditTools').classList.toggle('hidden', !showDocks);
             document.getElementById('audioDock').classList.toggle('hidden', !showDocks);
             if(!showDocks) { document.getElementById('openToolsBtn').classList.add('hidden'); document.getElementById('openAudioBtn').classList.add('hidden'); }
             
-            // 2. Apagar todos los botones (Agregamos 'navBtnCasos')
-            ['navBtnIngreso', 'navBtnDash', 'navBtnApel', 'navBtnVacios', 'navBtnCasos'].forEach(b => { 
+            // 2. Apagar todos los botones
+            ['navBtnIngreso', 'navBtnDash', 'navBtnApel', 'navBtnVacios', 'navBtnCasos', 'navBtnCapa'].forEach(b => { 
                 const el = document.getElementById(b);
                 if(el) { el.classList.remove('active-tab'); el.classList.add('opacity-60'); }
             });
@@ -580,7 +585,8 @@ function cambiarTab(id){
             const activeBtn = id === 'tabIngreso' ? 'navBtnIngreso' : 
                               (id === 'tabDashboard' ? 'navBtnDash' : 
                               (id === 'tabApelaciones' ? 'navBtnApel' : 
-                              (id === 'tabVacios' ? 'navBtnVacios' : 'navBtnCasos')));
+                              (id === 'tabVacios' ? 'navBtnVacios' : 
+                              (id === 'tabCapacitacion' ? 'navBtnCapa' : 'navBtnCasos'))));
                               
             const elActive = document.getElementById(activeBtn);
             if(elActive) { elActive.classList.add('active-tab'); elActive.classList.remove('opacity-60'); }
@@ -1024,6 +1030,7 @@ function poblarMesesReporte() {
         }
 
         // Función que gestiona el orden al hacer click en un encabezado
+// Función que gestiona el orden al hacer click en un encabezado
 // Función que gestiona el orden al hacer click en un encabezado
         window.sortTablePenc = function(col) {
             if (sortColPenc === col) {
