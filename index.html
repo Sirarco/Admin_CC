@@ -384,23 +384,12 @@ function resetIndicatorFilters() {
        let RAW_DATA=[], FILTERED_DATA=[], timerInterval, seconds=0, chartInstances = {}, activeTableFilter = null, cardPositions = {};
         let sortColPenc = 'NOMBRE', sortAscPenc = true; // Control de ordenamiento para la tabla PENC
 
-        window.onload = () => { 
+window.onload = () => { 
             renderFormTable(); 
             initFormLogic(); 
             document.getElementById('auditTools').classList.remove('hidden'); 
             document.getElementById('audioDock').classList.remove('hidden'); 
             
-
-// Fetch Pauta de Calidad Asíncrono
-            fetch("https://script.google.com/macros/s/AKfycbzEnzOn8TVN8xAX7do3tk1N2g3bD0lKh9EF5eh6T_I2yHFiPdeKDrM4RTwjG8f2uIzDJQ/exec")
-                .then(res => res.json())
-                .then(data => {
-                    window.PAUTA_DATA = data.pauta;
-                    // RE-RENDERIZAR la tabla para que use los datos reales recién llegados
-                    renderFormTable(); 
-                })
-                .catch(e => console.error("Error cargando pauta", e));
-
             // Hacer cajas arrastrables
             makeDraggable('audioDock', 'audioHeader');
             makeDraggable('auditTools', 'toolsHeader');
@@ -594,7 +583,7 @@ function cambiarTab(id){
             if(id==='tabDashboard' || id==='tabApelaciones') { if(RAW_DATA.length > 0) { aplicarFiltros(); renderApelaciones(RAW_DATA); } else { loadData(); } }
         }
 
-        async function loadData() {
+      async function loadData() {
             const loader = document.getElementById('loadingIndicator'); if(loader) loader.classList.remove('hidden');
             let data = await intentarFetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
             if (!data) data = await intentarFetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(API_URL + "?t=" + Date.now()));
@@ -603,10 +592,11 @@ function cambiarTab(id){
             if(Array.isArray(data)) {
                 RAW_DATA = data;
                 fillSelects(RAW_DATA); aplicarFiltros(); renderApelaciones(RAW_DATA);
-            } else { Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar a la base de datos.'}); }
+                renderFormTable(); // Actualiza los campos SI/NO de la pauta al cargar exitosamente
+            } else { Swal.fire({icon: 'error', title: 'Acceso Denegado', text: 'Verifica los permisos del Google Apps Script ("Cualquier persona").'}); }
             if(loader) loader.classList.add('hidden');
         }
-       async function intentarFetch(url) { try { const resp = await fetch(url); if (!resp.ok) return null; const json = await resp.json(); return (json && json.auditorias) ? json.auditorias : (Array.isArray(json) ? json : null); } catch (e) { return null; } }
+        async function intentarFetch(url) { try { const resp = await fetch(url); if (!resp.ok) return null; const json = await resp.json(); if(json && json.pauta) window.PAUTA_DATA = json.pauta; return (json && json.auditorias) ? json.auditorias : (Array.isArray(json) ? json : null); } catch (e) { return null; } }
 
         function fillSelects(data){
             const mS=document.getElementById('fMes'), sP=document.getElementById('fSup'), sV=document.getElementById('fServ');
@@ -651,7 +641,7 @@ function aplicarFiltros() {
                 return true;
             });
             renderDash();
-        }
+        
         }
         function resetFiltros(){ document.getElementById('fMes').value='TODOS'; document.getElementById('fSup').value='TODOS'; document.getElementById('fServ').value='TODOS'; document.getElementById('fSearch').value=''; if(document.getElementById('fTipo')) document.getElementById('fTipo').value='TODAS'; aplicarFiltros(); }
                function handleScroll() {
