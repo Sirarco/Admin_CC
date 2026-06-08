@@ -311,7 +311,7 @@
     </div>
     <script>
         // ================= CONFIGURACIÓN =================
-const API_URL = "https://script.google.com/macros/s/AKfycbzEnzOn8TVN8xAX7do3tk1N2g3bD0lKh9EF5eh6T_I2yHFiPdeKDrM4RTwjG8f2uIzDJQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzEnzOn8TVN8xAX7do3tk1N2g3bD0lKh9EF5eh6T_I2yHFiPdeKDrM4RTwjG8f2uIzDJQ/exec?token=SiperQA_Secure_2026_XYZ";
 
         const baseEjecutivos = [
             {nombre:"Andreina Villalon Mejías", codigo:"CC1683", sup:"Luis Cataldo", serv:"Bloqueo"},
@@ -604,7 +604,7 @@ function cambiarTab(id){
 async function loadData() {
             if(document.getElementById('loadingIndicator')) document.getElementById('loadingIndicator').classList.remove('hidden');
             
-            // CORRECCIÓN: Eliminamos los proxies que bloquean la conexión y consultamos directamente a Google.
+            // CONEXIÓN DIRECTA Y SEGURA A GOOGLE (Sin el proxy que causaba el error CORS)
             let data = await intentarFetch(API_URL + "&t=" + Date.now());
             
             if(Array.isArray(data)) { 
@@ -613,29 +613,22 @@ async function loadData() {
                 aplicarFiltros(); 
                 renderApelaciones(RAW_DATA); 
             } else {
-                Swal.fire({icon: 'error', title: 'Fallo de Conexión', text: 'No se pudieron descargar los datos. Revisa el Token o los permisos del Script.'});
+                console.error("No se pudo cargar la data. Revisa el token o los permisos del Script de Google.");
             }
             if(document.getElementById('loadingIndicator')) document.getElementById('loadingIndicator').classList.add('hidden');
         }
 
-        async function intentarFetch(url) {
-            try {
-                // Fetch nativo con soporte CORS de Google
+        async function intentarFetch(url) { 
+            try { 
                 const r = await fetch(url); 
                 if(!r.ok) return null; 
                 const j = await r.json(); 
-                
-                // Si el backend rechaza por token inválido, lo capturamos
-                if(j && j.error) { 
-                    console.error("Error del Servidor GAS:", j.error); 
-                    return null; 
-                }
-                
-                return (j && j.auditorias) ? j.auditorias : (Array.isArray(j) ? j : null);
-            } catch(e) {
-                console.error("Error de Red (CORS o Bloqueo):", e);
-                return null;
-            }
+                if(j && j.error) console.error("Backend rechazó la conexión:", j.error);
+                return (j && j.auditorias) ? j.auditorias : (Array.isArray(j) ? j : null); 
+            } catch(e) { 
+                console.error("Fallo de red:", e);
+                return null; 
+            } 
         }
         function fillSelects(data){
             const mS=document.getElementById('fMes'), sP=document.getElementById('fSup'), sV=document.getElementById('fServ');
