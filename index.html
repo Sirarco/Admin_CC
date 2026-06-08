@@ -603,20 +603,40 @@ function cambiarTab(id){
 
 async function loadData() {
             if(document.getElementById('loadingIndicator')) document.getElementById('loadingIndicator').classList.remove('hidden');
-            // Nota: Se cambió "?t=" por "&t=" para que no choque con el "?token=" de la URL
-            let data = await intentarFetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(API_URL + "&t=" + Date.now()));
-            if(!data) data = await intentarFetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(API_URL + "&t=" + Date.now()));
-            if(!data) data = await intentarFetch("https://corsproxy.io/?" + encodeURIComponent(API_URL + "&t=" + Date.now()));
+            
+            // CORRECCIÓN: Eliminamos los proxies que bloquean la conexión y consultamos directamente a Google.
+            let data = await intentarFetch(API_URL + "&t=" + Date.now());
             
             if(Array.isArray(data)) { 
-                RAW_DATA=data; fillSelects(RAW_DATA); aplicarFiltros(); renderApelaciones(RAW_DATA); renderFormTable();
-            } else { 
-                Swal.fire({icon: 'error', title: 'Acceso Denegado', text: 'Token inválido o falta de permisos.'}); 
+                RAW_DATA=data; 
+                fillSelects(RAW_DATA); 
+                aplicarFiltros(); 
+                renderApelaciones(RAW_DATA); 
+            } else {
+                Swal.fire({icon: 'error', title: 'Fallo de Conexión', text: 'No se pudieron descargar los datos. Revisa el Token o los permisos del Script.'});
             }
             if(document.getElementById('loadingIndicator')) document.getElementById('loadingIndicator').classList.add('hidden');
         }
-        async function intentarFetch(url) { try { const resp = await fetch(url); if (!resp.ok) return null; const json = await resp.json(); if(json && json.pauta) window.PAUTA_DATA = json.pauta; return (json && json.auditorias) ? json.auditorias : (Array.isArray(json) ? json : null); } catch (e) { return null; } }
 
+        async function intentarFetch(url) {
+            try {
+                // Fetch nativo con soporte CORS de Google
+                const r = await fetch(url); 
+                if(!r.ok) return null; 
+                const j = await r.json(); 
+                
+                // Si el backend rechaza por token inválido, lo capturamos
+                if(j && j.error) { 
+                    console.error("Error del Servidor GAS:", j.error); 
+                    return null; 
+                }
+                
+                return (j && j.auditorias) ? j.auditorias : (Array.isArray(j) ? j : null);
+            } catch(e) {
+                console.error("Error de Red (CORS o Bloqueo):", e);
+                return null;
+            }
+        }
         function fillSelects(data){
             const mS=document.getElementById('fMes'), sP=document.getElementById('fSup'), sV=document.getElementById('fServ');
             const saveM=mS.value; 
