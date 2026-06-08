@@ -526,26 +526,44 @@ function renderFormTable() {
             d.className = "font-black text-2xl text-center " + (c || f === 0 ? "text-red-500" : (f >= 85 ? "text-emerald-500" : "text-yellow-500"));
         }
 
-        document.getElementById('auditForm').addEventListener('submit',function(e){
-            e.preventDefault(); const b=document.getElementById('btnGuardar'), ot=b.innerHTML;
-            if(!document.getElementById('inputCodigo').value) return Swal.fire("Error","Selecciona ejecutivo","warning");
+document.getElementById('auditForm').addEventListener('submit',function(e){
+            e.preventDefault(); if(!document.getElementById('inputCodigo').value) return Swal.fire("Error","Selecciona ejecutivo","warning");
+            Swal.fire({title:'Guardando...', allowOutsideClick:false, didOpen:()=>{Swal.showLoading()}});
             
-            Swal.fire({ title: 'Guardando Evaluación...', html: 'Sincronizando con base de datos.', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
-            b.disabled=true;
-
+            let ml=document.getElementById('inputLlamadaLarga').value, pf=ml?`[Duración llamada > ${ml} minutos]\n`:"", obs=document.querySelector('[name="comentario"]').value, errs="";
+            
+            // CORRECCIÓN 1: Seleccionamos SOLO la clase donde está el nombre del indicador, omitiendo la pauta
+            document.querySelectorAll('.desc-input').forEach(i=>{
+                if(i.value){
+                    let tituloIndicador = i.closest('tr').cells[0].querySelector('.text-slate-700').innerText;
+                    errs+=`\n• ${tituloIndicador}: ${i.value}`;
+                }
+            });
+            
+            // Respaldamos el comentario original en caso de error
+            let originalObs = document.querySelector('[name="comentario"]').value;
+            document.querySelector('[name="comentario"]').value=pf+obs+(errs?"\n--- DETALLE ---"+errs:"");
             document.getElementById('fechaAuditoria').value=new Date().toISOString().split('T')[0];
-            let minLarga = document.getElementById('inputLlamadaLarga') ? document.getElementById('inputLlamadaLarga').value : "";
-            let prefijo = minLarga ? `[Duración llamada > ${minLarga} minutos]\n` : "";
-            let obs = document.querySelector('[name="comentario"]').value, errs="";
-            document.querySelectorAll('.desc-input').forEach(i=>{if(i.value)errs+=`\n• ${i.closest('tr').cells[0].innerText}: ${i.value}`});
-            let finalObs = prefijo + obs;
-            if(errs) finalObs += (finalObs ? "\n" : "") + "--- DETALLE ---" + errs;
-            document.querySelector('[name="comentario"]').value = finalObs;
             
-            const fd=new FormData(this);
-            fetch(API_URL,{method:'POST',body:JSON.stringify(Object.fromEntries(fd)),headers:{'Content-Type':'text/plain'}})
-            .then(()=>{Swal.fire("¡Éxito!", "Auditoría registrada correctamente.", "success");this.reset();document.getElementById('totalScore').innerText="0%";resetTimer();b.innerHTML=ot;b.disabled=false;loadData();})
-            .catch(()=>{Swal.fire("Error","Fallo conexión","error");b.innerHTML=ot;b.disabled=false;});
+            // CORRECCIÓN 2: Inyectamos el Token de Seguridad dentro del JSON para que el GAS lo acepte
+            let dataPost = Object.fromEntries(new FormData(this));
+            dataPost.token = "SiperQA_Secure_2026_XYZ";
+
+            fetch(API_URL,{method:'POST',body:JSON.stringify(dataPost),headers:{'Content-Type':'text/plain'}})
+            .then(res => res.json())
+            .then(data => {
+                if(data.error) throw new Error(data.error); // Si GAS devuelve error de token, cae al catch
+                Swal.fire("¡Éxito!","Guardado","success");
+                this.reset();
+                document.getElementById('totalScore').innerText="0%";
+                resetTimer();
+                loadData();
+            })
+            .catch(e=>{
+                Swal.fire("Error", "Fallo conexión. Revisa el token o los permisos.", "error");
+                // Si falla, devolvemos el comentario a su estado original para que no se arruine
+                document.querySelector('[name="comentario"]').value = originalObs;
+            });
         });
 
 function cambiarTab(id){
